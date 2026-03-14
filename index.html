@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface2: #F0EDE6;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.14);
+    --text: #1A1917;
+    --text-muted: #6B6860;
+    --text-faint: #A8A49E;
+    --accent: #1A1917;
+    --travel-bg: #EBF3FC; --travel-border: #378ADD; --travel-text: #0C447C;
+    --ooo-bg: #FAECE7; --ooo-border: #D85A30; --ooo-text: #993C1D;
+    --vacation-bg: #E3F5EE; --vacation-border: #1D9E75; --vacation-text: #0F6E56;
+    --today-bg: #EBF3FC; --today-border: #378ADD;
+    --weekend-bg: #F5F3EE;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .brand { font-family: 'DM Serif Display', serif; font-size: 20px; letter-spacing: -0.3px; color: var(--text); }
+  .brand span { color: var(--text-muted); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 300; margin-left: 10px; }
+
+  .header-controls { display: flex; align-items: center; gap: 8px; }
+  .view-toggle { display: flex; background: var(--surface2); border-radius: var(--radius-sm); padding: 3px; gap: 2px; }
+  .view-btn {
+    background: none; border: none; cursor: pointer; padding: 5px 12px;
+    font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500;
+    color: var(--text-muted); border-radius: 4px; transition: all 0.15s;
+  }
+  .view-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+  /* NAV */
+  .month-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.25rem 2rem 1rem;
+  }
+  .month-nav h2 { font-family: 'DM Serif Display', serif; font-size: 26px; letter-spacing: -0.5px; }
+  .nav-buttons { display: flex; gap: 6px; }
+  .nav-btn {
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 6px 16px; cursor: pointer;
+    font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .nav-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* LEGEND */
+  .legend {
+    display: flex; gap: 16px; padding: 0 2rem 1rem; flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; }
+  .legend-pip { width: 8px; height: 8px; border-radius: 50%; }
+  .pip-travel { background: var(--travel-border); }
+  .pip-ooo { background: var(--ooo-border); }
+  .pip-vacation { background: var(--vacation-border); }
+  .pip-weekend { background: var(--text-faint); }
+
+  /* MAIN */
+  main { padding: 0 2rem 3rem; }
+
+  /* ===================== LIST VIEW ===================== */
+  #list-view { display: flex; flex-direction: column; gap: 6px; }
+
+  .week-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .week-inner { display: grid; grid-template-columns: 140px 1fr; }
+
+  .loc-col {
+    background: var(--surface2);
+    border-right: 1px solid var(--border);
+    padding: 10px 12px;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 14px;
+    min-height: 50px;
+  }
+  .loc-pin { font-size: 11px; color: var(--text-faint); margin-right: 5px; margin-top: 1px; flex-shrink: 0; }
+  .loc-input {
+    background: none; border: none; outline: none;
+    font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500;
+    color: var(--text-muted); width: 100%; resize: none;
+    line-height: 1.4;
+  }
+  .loc-input::placeholder { color: var(--text-faint); font-weight: 300; font-style: italic; }
+  .loc-input:focus { color: var(--text); }
+
+  .days-col { display: flex; flex-direction: column; }
+
+  .day-row {
+    display: grid;
+    grid-template-columns: 62px 1fr auto;
+    align-items: center;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    min-height: 40px;
+    gap: 10px;
+    transition: background 0.1s;
+  }
+  .day-row:last-child { border-bottom: none; }
+  .day-row.weekend { background: var(--weekend-bg); }
+  .day-row.is-today { background: var(--today-bg); }
+  .day-row.status-travel { background: var(--travel-bg) !important; border-left: 3px solid var(--travel-border); }
+  .day-row.status-ooo { background: var(--ooo-bg) !important; border-left: 3px solid var(--ooo-border); }
+  .day-row.status-vacation { background: var(--vacation-bg) !important; border-left: 3px solid var(--vacation-border); }
+
+  .day-label {
+    font-size: 12px; font-weight: 500; color: var(--text-muted);
+    white-space: nowrap; display: flex; align-items: baseline; gap: 4px;
+  }
+  .day-label .daynum { font-size: 11px; font-weight: 300; color: var(--text-faint); }
+  .day-row.is-today .day-label { color: var(--travel-text); }
+
+  .day-note {
+    font-size: 13px; border: none; outline: none; background: none;
+    font-family: 'DM Sans', sans-serif; color: var(--text); width: 100%;
+  }
+  .day-note::placeholder { color: var(--text-faint); }
+
+  .tag-btn {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border-strong);
+    background: none; cursor: pointer; color: var(--text-faint);
+    font-family: 'DM Sans', sans-serif; white-space: nowrap; transition: all 0.15s;
+  }
+  .tag-btn:hover { border-color: var(--text-muted); color: var(--text-muted); }
+  .tag-btn.t-travel { background: var(--travel-bg); color: var(--travel-text); border-color: var(--travel-border); }
+  .tag-btn.t-ooo { background: var(--ooo-bg); color: var(--ooo-text); border-color: var(--ooo-border); }
+  .tag-btn.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
+
+  /* ===================== GRID VIEW ===================== */
+  #grid-view { display: none; }
+
+  .grid-dow-headers {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+  .dow-hdr {
+    text-align: center; font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint);
+    padding: 4px 0;
+  }
+
+  .grid-weeks { display: flex; flex-direction: column; gap: 4px; }
+  .grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+
+  .grid-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    min-height: 90px;
+    padding: 8px;
+    display: flex; flex-direction: column; gap: 4px;
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+  .grid-cell.empty { background: none; border-color: transparent; cursor: default; }
+  .grid-cell.weekend { background: var(--weekend-bg); }
+  .grid-cell.is-today { background: var(--today-bg); border-color: var(--today-border); }
+  .grid-cell.status-travel { background: var(--travel-bg) !important; border-color: var(--travel-border); }
+  .grid-cell.status-ooo { background: var(--ooo-bg) !important; border-color: var(--ooo-border); }
+  .grid-cell.status-vacation { background: var(--vacation-bg) !important; border-color: var(--vacation-border); }
+
+  .cell-num {
+    font-size: 13px; font-weight: 500; color: var(--text-muted); line-height: 1;
+  }
+  .grid-cell.is-today .cell-num { color: var(--travel-text); }
+  .cell-note {
+    font-size: 11px; color: var(--text-muted); line-height: 1.3;
+    word-break: break-word; flex: 1;
+  }
+  .cell-tag {
+    font-size: 9px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 10px; align-self: flex-start;
+  }
+  .cell-tag.t-travel { background: var(--travel-bg); color: var(--travel-text); }
+  .cell-tag.t-ooo { background: var(--ooo-bg); color: var(--ooo-text); }
+  .cell-tag.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); }
+
+  /* GRID LOCATION ROW */
+  .grid-loc-row {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px;
+  }
+  .grid-loc-cell {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 5px 8px;
+    font-size: 11px; color: var(--text-muted); font-style: italic;
+    min-height: 28px; display: flex; align-items: center;
+  }
+  .grid-loc-cell.span7 { grid-column: span 7; }
+
+  /* MODAL for grid cell editing */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.3); z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 1.5rem; width: 340px; box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+  }
+  .modal h3 { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 1rem; }
+  .modal textarea {
+    width: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    resize: none; outline: none; height: 80px; color: var(--text);
+    background: var(--bg);
+  }
+  .modal textarea:focus { border-color: var(--text-muted); }
+  .modal-tags { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+  .modal-tag-btn {
+    font-size: 11px; font-weight: 500; padding: 5px 12px; border-radius: 20px;
+    border: 1px solid var(--border-strong); background: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; color: var(--text-muted); transition: all 0.15s;
+  }
+  .modal-tag-btn.active.t-travel { background: var(--travel-bg); color: var(--travel-text); border-color: var(--travel-border); }
+  .modal-tag-btn.active.t-ooo { background: var(--ooo-bg); color: var(--ooo-text); border-color: var(--ooo-border); }
+  .modal-tag-btn.active.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
+  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+  .modal-close {
+    background: var(--text); color: #fff; border: none; border-radius: var(--radius-sm);
+    padding: 8px 20px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 0 1rem; }
+    .month-nav { padding: 1rem 1rem 0.75rem; }
+    main { padding: 0 1rem 2rem; }
+    .legend { padding: 0 1rem 0.75rem; }
+    .week-inner { grid-template-columns: 110px 1fr; }
+    .modal { width: 90vw; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">Field Planner <span>by FireTex</span></div>
+  <div class="header-controls">
+    <div class="view-toggle">
+      <button class="view-btn active" id="btn-list" onclick="setView('list')">List</button>
+      <button class="view-btn" id="btn-grid" onclick="setView('grid')">Calendar</button>
+    </div>
+  </div>
+</header>
+
+<div class="month-nav">
+  <h2 id="month-title"></h2>
+  <div class="nav-buttons">
+    <button class="nav-btn" onclick="changeMonth(-1)">← Prev</button>
+    <button class="nav-btn" onclick="changeMonth(1)">Next →</button>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-pip pip-travel"></div> Travel</div>
+  <div class="legend-item"><div class="legend-pip pip-ooo"></div> Out of office</div>
+  <div class="legend-item"><div class="legend-pip pip-vacation"></div> Vacation</div>
+  <div class="legend-item"><div class="legend-pip pip-weekend"></div> Weekend</div>
+</div>
+
+<main>
+  <div id="list-view"></div>
+  <div id="grid-view"></div>
+</main>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <textarea id="modal-note" placeholder="Add a note for this day..."></textarea>
+    <div class="modal-tags">
+      <button class="modal-tag-btn t-travel" id="mtag-travel" onclick="toggleModalTag('travel')">Travel</button>
+      <button class="modal-tag-btn t-ooo" id="mtag-ooo" onclick="toggleModalTag('ooo')">Out of office</button>
+      <button class="modal-tag-btn t-vacation" id="mtag-vacation" onclick="toggleModalTag('vacation')">Vacation</button>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-close" onclick="saveModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_SHORT = ['S','M','T','W','T','F','S'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const STATUSES = ['travel','ooo','vacation'];
+const STATUS_LABELS = { travel: 'Travel', ooo: 'OOO', vacation: 'Vacation' };
+
+const today = new Date();
+let cur = { year: today.getFullYear(), month: today.getMonth() };
+let currentView = 'list';
+let modalDk = null;
+
+function storageKey() { return `fp-data`; }
+function loadData() { try { return JSON.parse(localStorage.getItem(storageKey())) || {}; } catch(e) { return {}; } }
+function saveData(d) { localStorage.setItem(storageKey(), JSON.stringify(d)); }
+let DATA = loadData();
+
+function dk(y,m,d) { return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function lk(y,m,w) { return `loc-${y}-${m}-${w}`; }
+
+function getWeeks(year, month) {
+  const last = new Date(year, month + 1, 0).getDate();
+  const weeks = [];
+  let wk = [];
+  for (let d = 1; d <= last; d++) {
+    const date = new Date(year, month, d);
+    if (wk.length && date.getDay() === 0) { weeks.push(wk); wk = []; }
+    wk.push(date);
+  }
+  if (wk.length) weeks.push(wk);
+  return weeks;
+}
+
+function isToday(date) {
+  return date.getFullYear() === today.getFullYear() &&
+         date.getMonth() === today.getMonth() &&
+         date.getDate() === today.getDate();
+}
+
+function cycleStatus(key) {
+  const cur = DATA[key+'-status'] || null;
+  const idx = STATUSES.indexOf(cur);
+  DATA[key+'-status'] = idx >= STATUSES.length - 1 ? null : STATUSES[idx + 1];
+  saveData(DATA);
+  render();
+}
+
+// ===================== LIST VIEW =====================
+function renderList() {
+  const { year, month } = cur;
+  const weeks = getWeeks(year, month);
+  const el = document.getElementById('list-view');
+  el.innerHTML = '';
+
+  weeks.forEach((week, wi) => {
+    const lockey = lk(year, month, wi);
+    const block = document.createElement('div');
+    block.className = 'week-block';
+
+    const inner = document.createElement('div');
+    inner.className = 'week-inner';
+
+    // Location column
+    const locCol = document.createElement('div');
+    locCol.className = 'loc-col';
+    locCol.innerHTML = `<span class="loc-pin">●</span><textarea class="loc-input" placeholder="Location..." rows="2">${DATA[lockey]||''}</textarea>`;
+    locCol.querySelector('textarea').addEventListener('input', e => {
+      DATA[lockey] = e.target.value; saveData(DATA);
+    });
+
+    // Days column
+    const daysCol = document.createElement('div');
+    daysCol.className = 'days-col';
+
+    week.forEach(date => {
+      const dow = date.getDay();
+      const weekend = dow === 0 || dow === 6;
+      const today_ = isToday(date);
+      const key = dk(date.getFullYear(), date.getMonth(), date.getDate());
+      const status = DATA[key+'-status'] || null;
+      const note = DATA[key] || '';
+
+      const row = document.createElement('div');
+      let cls = 'day-row';
+      if (weekend) cls += ' weekend';
+      if (today_) cls += ' is-today';
+      if (status) cls += ' status-' + status;
+      row.className = cls;
+
+      const tagCls = status ? `tag-btn t-${status}` : 'tag-btn';
+      const tagLabel = status ? STATUS_LABELS[status] : 'Tag';
+
+      row.innerHTML = `
+        <div class="day-label">${DAYS[dow]} <span class="daynum">${date.getDate()}</span></div>
+        <input class="day-note" placeholder="—" value="${note.replace(/"/g,'&quot;')}" data-key="${key}" />
+        <button class="${tagCls}" data-key="${key}">${tagLabel}</button>
+      `;
+      row.querySelector('.day-note').addEventListener('input', e => {
+        DATA[e.target.dataset.key] = e.target.value; saveData(DATA);
+      });
+      row.querySelector('.tag-btn').addEventListener('click', e => {
+        cycleStatus(e.target.dataset.key);
+      });
+      daysCol.appendChild(row);
+    });
+
+    inner.appendChild(locCol);
+    inner.appendChild(daysCol);
+    block.appendChild(inner);
+    el.appendChild(block);
+  });
+}
+
+// ===================== GRID VIEW =====================
+function renderGrid() {
+  const { year, month } = cur;
+  const weeks = getWeeks(year, month);
+  const el = document.getElementById('grid-view');
+  el.innerHTML = '';
+
+  // DOW headers
+  const hdrs = document.createElement('div');
+  hdrs.className = 'grid-dow-headers';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'dow-hdr'; h.textContent = d;
+    hdrs.appendChild(h);
+  });
+  el.appendChild(hdrs);
+
+  const weeksEl = document.createElement('div');
+  weeksEl.className = 'grid-weeks';
+
+  weeks.forEach((week, wi) => {
+    const lockey = lk(year, month, wi);
+    const locVal = DATA[lockey] || '';
+
+    // Location bar
+    const locRow = document.createElement('div');
+    locRow.className = 'grid-loc-row';
+    const startDow = week[0].getDay();
+    const endDow = week[week.length-1].getDay();
+
+    // Fill empty cells before
+    for (let i = 0; i < startDow; i++) {
+      const empty = document.createElement('div'); locRow.appendChild(empty);
+    }
+    const locCell = document.createElement('div');
+    locCell.className = 'grid-loc-cell';
+    locCell.style.gridColumn = `span ${week.length}`;
+    locCell.textContent = locVal || '— no location set';
+    locRow.appendChild(locCell);
+    // Fill empty cells after
+    for (let i = endDow + 1; i < 7; i++) {
+      const empty = document.createElement('div'); locRow.appendChild(empty);
+    }
+    weeksEl.appendChild(locRow);
+
+    // Week row
+    const weekRow = document.createElement('div');
+    weekRow.className = 'grid-week';
+
+    // Pad start
+    for (let i = 0; i < startDow; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'grid-cell empty';
+      weekRow.appendChild(cell);
+    }
+
+    week.forEach(date => {
+      const dow = date.getDay();
+      const weekend = dow === 0 || dow === 6;
+      const today_ = isToday(date);
+      const key = dk(date.getFullYear(), date.getMonth(), date.getDate());
+      const status = DATA[key+'-status'] || null;
+      const note = DATA[key] || '';
+
+      const cell = document.createElement('div');
+      let cls = 'grid-cell';
+      if (weekend) cls += ' weekend';
+      if (today_) cls += ' is-today';
+      if (status) cls += ' status-' + status;
+      cell.className = cls;
+      cell.dataset.key = key;
+      cell.dataset.date = date.toDateString();
+      cell.innerHTML = `
+        <div class="cell-num">${date.getDate()}</div>
+        ${note ? `<div class="cell-note">${note}</div>` : ''}
+        ${status ? `<div class="cell-tag t-${status}">${STATUS_LABELS[status]}</div>` : ''}
+      `;
+      cell.addEventListener('click', () => openModal(key, date));
+      weekRow.appendChild(cell);
+    });
+
+    // Pad end
+    for (let i = endDow + 1; i < 7; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'grid-cell empty';
+      weekRow.appendChild(cell);
+    }
+
+    weeksEl.appendChild(weekRow);
+  });
+
+  el.appendChild(weeksEl);
+}
+
+// ===================== MODAL =====================
+function openModal(key, date) {
+  modalDk = key;
+  const note = DATA[key] || '';
+  const status = DATA[key+'-status'] || null;
+  document.getElementById('modal-title').textContent = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  document.getElementById('modal-note').value = note;
+  STATUSES.forEach(s => {
+    const btn = document.getElementById('mtag-' + s);
+    btn.className = 'modal-tag-btn t-' + s + (status === s ? ' active' : '');
+  });
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('modal-note').focus(), 50);
+}
+
+function toggleModalTag(status) {
+  const cur = DATA[modalDk+'-status'] || null;
+  DATA[modalDk+'-status'] = cur === status ? null : status;
+  saveData(DATA);
+  STATUSES.forEach(s => {
+    const btn = document.getElementById('mtag-' + s);
+    btn.className = 'modal-tag-btn t-' + s + (DATA[modalDk+'-status'] === s ? ' active' : '');
+  });
+}
+
+function saveModal() {
+  if (modalDk) {
+    DATA[modalDk] = document.getElementById('modal-note').value;
+    saveData(DATA);
+  }
+  document.getElementById('modal-overlay').classList.remove('open');
+  modalDk = null;
+  render();
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) saveModal();
+}
+
+// ===================== CORE =====================
+function setView(v) {
+  currentView = v;
+  document.getElementById('list-view').style.display = v === 'list' ? 'flex' : 'none';
+  document.getElementById('grid-view').style.display = v === 'grid' ? 'block' : 'none';
+  document.getElementById('btn-list').className = 'view-btn' + (v === 'list' ? ' active' : '');
+  document.getElementById('btn-grid').className = 'view-btn' + (v === 'grid' ? ' active' : '');
+  render();
+}
+
+function render() {
+  document.getElementById('month-title').textContent = `${MONTHS[cur.month]} ${cur.year}`;
+  if (currentView === 'list') renderList();
+  else renderGrid();
+}
+
+function changeMonth(dir) {
+  cur.month += dir;
+  if (cur.month > 11) { cur.month = 0; cur.year++; }
+  if (cur.month < 0) { cur.month = 11; cur.year--; }
+  render();
+}
+
+document.getElementById('list-view').style.display = 'flex';
+document.getElementById('grid-view').style.display = 'none';
+render();
+</script>
+</body>
+</html>
