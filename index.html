@@ -330,10 +330,53 @@ let cur = { year: today.getFullYear(), month: today.getMonth() };
 let currentView = 'list';
 let modalDk = null;
 
-function storageKey() { return `fp-data`; }
-function loadData() { try { return JSON.parse(localStorage.getItem(storageKey())) || {}; } catch(e) { return {}; } }
-function saveData(d) { localStorage.setItem(storageKey(), JSON.stringify(d)); }
-let DATA = loadData();
+// ===================== DATA LAYER =====================
+// localStorage = instant cache; Upstash Redis (via /api/data) = cross-device sync.
+const STORAGE_KEY = 'fp-data';
+function loadLocal() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; } }
+function saveLocal(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+
+let DATA = loadLocal();
+let _syncTimer = null;
+let _pushing = false;
+
+function saveData(d) {
+  saveLocal(d);
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(pushToRemote, 800);  // debounce 800ms
+}
+
+async function pushToRemote() {
+  if (_pushing) return;            // avoid overlapping writes
+  _pushing = true;
+  try {
+    const res = await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(DATA),
+    });
+    if (!res.ok) throw new Error(res.status);
+  } catch (e) {
+    console.warn('Sync push failed, will retry on next edit:', e);
+  } finally {
+    _pushing = false;
+  }
+}
+
+// On page load: fetch remote data, merge on top of local cache, re-render
+(async function pullFromRemote() {
+  try {
+    const res = await fetch('/api/data');
+    if (!res.ok) throw new Error(res.status);
+    const remote = await res.json();
+    // Remote wins — overwrite local cache with remote data
+    Object.assign(DATA, remote);
+    saveLocal(DATA);
+    render();
+  } catch (e) {
+    console.warn('Could not fetch remote data, using local cache:', e);
+  }
+})();
 
 function dk(y,m,d) { return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
 function lk(y,m,w) { return `loc-${y}-${m}-${w}`; }
