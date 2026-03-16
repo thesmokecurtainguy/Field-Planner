@@ -332,9 +332,26 @@ let modalDk = null;
 
 // ===================== DATA LAYER =====================
 // localStorage = instant cache; Upstash Redis (via /api/data) = cross-device sync.
+// Auth: ?secret=<FP_API_SECRET> in the URL, stored in localStorage once provided.
 const STORAGE_KEY = 'fp-data';
+const SECRET_KEY = 'fp-secret';
 function loadLocal() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; } }
 function saveLocal(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+
+// Grab secret from URL ?secret=xxx (first visit) or localStorage (subsequent)
+(function initSecret() {
+  const params = new URLSearchParams(window.location.search);
+  const s = params.get('secret');
+  if (s) { localStorage.setItem(SECRET_KEY, s); window.history.replaceState({}, '', window.location.pathname); }
+})();
+function getSecret() { return localStorage.getItem(SECRET_KEY) || ''; }
+
+function apiHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  const s = getSecret();
+  if (s) h['Authorization'] = 'Bearer ' + s;
+  return h;
+}
 
 let DATA = loadLocal();
 let _syncTimer = null;
@@ -352,7 +369,7 @@ async function pushToRemote() {
   try {
     const res = await fetch('/api/data', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: JSON.stringify(DATA),
     });
     if (!res.ok) throw new Error(res.status);
@@ -366,7 +383,7 @@ async function pushToRemote() {
 // On page load: fetch remote data, merge on top of local cache, re-render
 (async function pullFromRemote() {
   try {
-    const res = await fetch('/api/data');
+    const res = await fetch('/api/data', { headers: apiHeaders() });
     if (!res.ok) throw new Error(res.status);
     const remote = await res.json();
     // Remote wins — overwrite local cache with remote data

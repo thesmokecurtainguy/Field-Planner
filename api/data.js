@@ -25,13 +25,24 @@ async function redis(method, ...args) {
   return res.json();
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // CORS — allow the Vercel-hosted frontend (same origin) and local dev
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') return res.status(204).end();
+
+  // Auth: require a shared secret so strangers can't read/write your calendar.
+  // Set FP_API_SECRET in Vercel env vars, then pass it from the client as
+  // Authorization: Bearer <secret>.
+  const secret = process.env.FP_API_SECRET;
+  if (secret) {
+    const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (auth !== secret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
 
   try {
     if (req.method === 'GET') {
