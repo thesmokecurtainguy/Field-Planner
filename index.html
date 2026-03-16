@@ -367,14 +367,17 @@ async function pushToRemote() {
   if (_pushing) return;            // avoid overlapping writes
   _pushing = true;
   try {
+    console.log('[FP] Pushing data to remote...');
     const res = await fetch('/api/data', {
       method: 'POST',
       headers: apiHeaders(),
       body: JSON.stringify(DATA),
     });
+    console.log('[FP] Push response:', res.status);
     if (!res.ok) throw new Error(res.status);
+    console.log('[FP] Push succeeded');
   } catch (e) {
-    console.warn('Sync push failed, will retry on next edit:', e);
+    console.warn('[FP] Sync push failed, will retry on next edit:', e);
   } finally {
     _pushing = false;
   }
@@ -383,10 +386,14 @@ async function pushToRemote() {
 // On page load: fetch remote data, merge with local cache, re-render.
 // If local has data that remote doesn't (first deploy migration), push it up.
 (async function syncOnLoad() {
+  console.log('[FP] syncOnLoad starting, secret present:', !!getSecret());
+  console.log('[FP] Local DATA keys:', Object.keys(DATA).length);
   try {
     const res = await fetch('/api/data', { headers: apiHeaders() });
+    console.log('[FP] Remote fetch status:', res.status);
     if (!res.ok) throw new Error(res.status);
     const remote = await res.json();
+    console.log('[FP] Remote data keys:', Object.keys(remote).length);
     const localHadKeys = Object.keys(DATA).length > 0;
     const remoteIsEmpty = Object.keys(remote).length === 0;
     // Remote wins for any key it has; local keys not in remote are kept
@@ -395,11 +402,11 @@ async function pushToRemote() {
     render();
     // First-time migration: push local data up if remote DB is empty
     if (localHadKeys && remoteIsEmpty) {
-      console.info('Migrating local data to remote DB...');
+      console.log('[FP] Migrating local data to remote DB...');
       await pushToRemote();
     }
   } catch (e) {
-    console.warn('Could not fetch remote data, using local cache:', e);
+    console.warn('[FP] Could not fetch remote data, using local cache:', e);
   }
 })();
 
