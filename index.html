@@ -380,16 +380,24 @@ async function pushToRemote() {
   }
 }
 
-// On page load: fetch remote data, merge on top of local cache, re-render
-(async function pullFromRemote() {
+// On page load: fetch remote data, merge with local cache, re-render.
+// If local has data that remote doesn't (first deploy migration), push it up.
+(async function syncOnLoad() {
   try {
     const res = await fetch('/api/data', { headers: apiHeaders() });
     if (!res.ok) throw new Error(res.status);
     const remote = await res.json();
-    // Remote wins — overwrite local cache with remote data
+    const localHadKeys = Object.keys(DATA).length > 0;
+    const remoteIsEmpty = Object.keys(remote).length === 0;
+    // Remote wins for any key it has; local keys not in remote are kept
     Object.assign(DATA, remote);
     saveLocal(DATA);
     render();
+    // First-time migration: push local data up if remote DB is empty
+    if (localHadKeys && remoteIsEmpty) {
+      console.info('Migrating local data to remote DB...');
+      await pushToRemote();
+    }
   } catch (e) {
     console.warn('Could not fetch remote data, using local cache:', e);
   }
