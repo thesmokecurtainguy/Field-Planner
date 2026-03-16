@@ -330,10 +330,85 @@ let cur = { year: today.getFullYear(), month: today.getMonth() };
 let currentView = 'list';
 let modalDk = null;
 
-function storageKey() { return `fp-data`; }
-function loadData() { try { return JSON.parse(localStorage.getItem(storageKey())) || {}; } catch(e) { return {}; } }
-function saveData(d) { localStorage.setItem(storageKey(), JSON.stringify(d)); }
-let DATA = loadData();
+// ===================== DATA LAYER =====================
+// localStorage = instant cache; Upstash Redis (via /api/data) = cross-device sync.
+// Auth: ?secret=<FP_API_SECRET> in the URL, stored in localStorage once provided.
+const STORAGE_KEY = 'fp-data';
+const SECRET_KEY = 'fp-secret';
+function loadLocal() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; } }
+function saveLocal(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+
+// Grab secret from URL ?secret=xxx (first visit) or localStorage (subsequent)
+(function initSecret() {
+  const params = new URLSearchParams(window.location.search);
+  const s = params.get('secret');
+  if (s) { localStorage.setItem(SECRET_KEY, s); window.history.replaceState({}, '', window.location.pathname); }
+})();
+function getSecret() { return localStorage.getItem(SECRET_KEY) || ''; }
+
+function apiHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  const s = getSecret();
+  if (s) h['Authorization'] = 'Bearer ' + s;
+  return h;
+}
+
+let DATA = loadLocal();
+let _syncTimer = null;
+let _pushing = false;
+
+function saveData(d) {
+  saveLocal(d);
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(pushToRemote, 800);  // debounce 800ms
+}
+
+async function pushToRemote() {
+  if (_pushing) return;            // avoid overlapping writes
+  _pushing = true;
+  try {
+    console.log('[FP] Pushing data to remote...');
+    const res = await fetch('/api/data', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify(DATA),
+    });
+    console.log('[FP] Push response:', res.status);
+    if (!res.ok) throw new Error(res.status);
+    console.log('[FP] Push succeeded');
+  } catch (e) {
+    console.warn('[FP] Sync push failed, will retry on next edit:', e);
+  } finally {
+    _pushing = false;
+  }
+}
+
+// On page load: fetch remote data, merge with local cache, re-render.
+// If local has data that remote doesn't (first deploy migration), push it up.
+(async function syncOnLoad() {
+  console.log('[FP] syncOnLoad starting, secret present:', !!getSecret());
+  console.log('[FP] Local DATA keys:', Object.keys(DATA).length);
+  try {
+    const res = await fetch('/api/data', { headers: apiHeaders() });
+    console.log('[FP] Remote fetch status:', res.status);
+    if (!res.ok) throw new Error(res.status);
+    const remote = await res.json();
+    console.log('[FP] Remote data keys:', Object.keys(remote).length);
+    const localHadKeys = Object.keys(DATA).length > 0;
+    const remoteIsEmpty = Object.keys(remote).length === 0;
+    // Remote wins for any key it has; local keys not in remote are kept
+    Object.assign(DATA, remote);
+    saveLocal(DATA);
+    render();
+    // First-time migration: push local data up if remote DB is empty
+    if (localHadKeys && remoteIsEmpty) {
+      console.log('[FP] Migrating local data to remote DB...');
+      await pushToRemote();
+    }
+  } catch (e) {
+    console.warn('[FP] Could not fetch remote data, using local cache:', e);
+  }
+})();
 
 function dk(y,m,d) { return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
 function lk(y,m,w) { return `loc-${y}-${m}-${w}`; }
