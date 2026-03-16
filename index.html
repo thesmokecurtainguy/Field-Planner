@@ -17,68 +17,49 @@
     --text: #1A1917;
     --text-muted: #6B6860;
     --text-faint: #A8A49E;
-    --accent: #1A1917;
     --travel-bg: #EBF3FC; --travel-border: #378ADD; --travel-text: #0C447C;
     --ooo-bg: #FAECE7; --ooo-border: #D85A30; --ooo-text: #993C1D;
     --vacation-bg: #E3F5EE; --vacation-border: #1D9E75; --vacation-text: #0F6E56;
     --today-bg: #EBF3FC; --today-border: #378ADD;
     --weekend-bg: #F5F3EE;
+    --past-opacity: 0.42;
     --radius: 10px;
     --radius-sm: 6px;
   }
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    font-size: 14px;
-  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
 
-  /* HEADER */
+  /* ── HEADER ── */
   header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 0 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 60px;
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 2rem; display: flex; align-items: center; justify-content: space-between;
+    height: 60px; position: sticky; top: 0; z-index: 100;
   }
-  .brand { font-family: 'DM Serif Display', serif; font-size: 20px; letter-spacing: -0.3px; color: var(--text); }
+  .brand { font-family: 'DM Serif Display', serif; font-size: 20px; letter-spacing: -0.3px; }
   .brand span { color: var(--text-muted); font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 300; margin-left: 10px; }
 
   .header-controls { display: flex; align-items: center; gap: 8px; }
   .view-toggle { display: flex; background: var(--surface2); border-radius: var(--radius-sm); padding: 3px; gap: 2px; }
   .view-btn {
-    background: none; border: none; cursor: pointer; padding: 5px 12px;
+    background: none; border: none; cursor: pointer; padding: 5px 11px;
     font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500;
-    color: var(--text-muted); border-radius: 4px; transition: all 0.15s;
+    color: var(--text-muted); border-radius: 4px; transition: all 0.15s; white-space: nowrap;
   }
   .view-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
-  /* NAV */
-  .month-nav {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 1.25rem 2rem 1rem;
-  }
+  /* ── NAV ── */
+  .month-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem 1rem; }
   .month-nav h2 { font-family: 'DM Serif Display', serif; font-size: 26px; letter-spacing: -0.5px; }
   .nav-buttons { display: flex; gap: 6px; }
   .nav-btn {
     background: var(--surface); border: 1px solid var(--border-strong);
     border-radius: var(--radius-sm); padding: 6px 16px; cursor: pointer;
-    font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-muted);
-    transition: all 0.15s;
+    font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-muted); transition: all 0.15s;
   }
   .nav-btn:hover { background: var(--surface2); color: var(--text); }
 
-  /* LEGEND */
-  .legend {
-    display: flex; gap: 16px; padding: 0 2rem 1rem; flex-wrap: wrap;
-  }
+  /* ── LEGEND ── */
+  .legend { display: flex; gap: 16px; padding: 0 2rem 1rem; flex-wrap: wrap; }
   .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; }
   .legend-pip { width: 8px; height: 8px; border-radius: 50%; }
   .pip-travel { background: var(--travel-border); }
@@ -86,35 +67,37 @@
   .pip-vacation { background: var(--vacation-border); }
   .pip-weekend { background: var(--text-faint); }
 
-  /* MAIN */
   main { padding: 0 2rem 3rem; }
 
-  /* ===================== LIST VIEW ===================== */
+  /* ── PAST ── */
+  .day-row.past,
+  .grid-cell.past,
+  .week-day-block.past { opacity: var(--past-opacity); }
+
+  /* ══════════ LIST VIEW ══════════ */
   #list-view { display: flex; flex-direction: column; gap: 6px; }
 
-  .week-block {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-  }
+  .week-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
   .week-inner { display: grid; grid-template-columns: 140px 1fr; }
 
   .loc-col {
-    background: var(--surface2);
-    border-right: 1px solid var(--border);
-    padding: 10px 12px;
-    display: flex;
-    align-items: flex-start;
-    padding-top: 14px;
-    min-height: 50px;
+    border-right: 1px solid var(--border); padding: 10px 12px;
+    display: flex; align-items: flex-start; padding-top: 14px; min-height: 50px;
+    background: var(--surface2); transition: background 0.2s, border-color 0.2s;
   }
+  .loc-col.loc-travel  { background: var(--travel-bg);   border-right-color: var(--travel-border); }
+  .loc-col.loc-ooo     { background: var(--ooo-bg);      border-right-color: var(--ooo-border); }
+  .loc-col.loc-vacation{ background: var(--vacation-bg); border-right-color: var(--vacation-border); }
+
   .loc-pin { font-size: 11px; color: var(--text-faint); margin-right: 5px; margin-top: 1px; flex-shrink: 0; }
+  .loc-col.loc-travel   .loc-pin { color: var(--travel-text); }
+  .loc-col.loc-ooo      .loc-pin { color: var(--ooo-text); }
+  .loc-col.loc-vacation .loc-pin { color: var(--vacation-text); }
+
   .loc-input {
     background: none; border: none; outline: none;
     font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500;
-    color: var(--text-muted); width: 100%; resize: none;
-    line-height: 1.4;
+    color: var(--text-muted); width: 100%; resize: none; line-height: 1.4;
   }
   .loc-input::placeholder { color: var(--text-faint); font-weight: 300; font-style: italic; }
   .loc-input:focus { color: var(--text); }
@@ -122,34 +105,45 @@
   .days-col { display: flex; flex-direction: column; }
 
   .day-row {
-    display: grid;
-    grid-template-columns: 62px 1fr auto;
-    align-items: center;
-    padding: 6px 12px;
-    border-bottom: 1px solid var(--border);
-    min-height: 40px;
-    gap: 10px;
-    transition: background 0.1s;
+    display: grid; grid-template-columns: 62px 1fr auto;
+    align-items: start; padding: 6px 12px;
+    border-bottom: 1px solid var(--border); min-height: 40px; gap: 10px; transition: background 0.1s;
   }
   .day-row:last-child { border-bottom: none; }
-  .day-row.weekend { background: var(--weekend-bg); }
+  .day-row.weekend  { background: var(--weekend-bg); }
   .day-row.is-today { background: var(--today-bg); }
-  .day-row.status-travel { background: var(--travel-bg) !important; border-left: 3px solid var(--travel-border); }
-  .day-row.status-ooo { background: var(--ooo-bg) !important; border-left: 3px solid var(--ooo-border); }
+  .day-row.status-travel   { background: var(--travel-bg)   !important; border-left: 3px solid var(--travel-border); }
+  .day-row.status-ooo      { background: var(--ooo-bg)      !important; border-left: 3px solid var(--ooo-border); }
   .day-row.status-vacation { background: var(--vacation-bg) !important; border-left: 3px solid var(--vacation-border); }
 
-  .day-label {
-    font-size: 12px; font-weight: 500; color: var(--text-muted);
-    white-space: nowrap; display: flex; align-items: baseline; gap: 4px;
-  }
+  .day-label { font-size: 12px; font-weight: 500; color: var(--text-muted); white-space: nowrap; display: flex; align-items: baseline; gap: 4px; padding-top: 5px; }
   .day-label .daynum { font-size: 11px; font-weight: 300; color: var(--text-faint); }
   .day-row.is-today .day-label { color: var(--travel-text); }
 
-  .day-note {
-    font-size: 13px; border: none; outline: none; background: none;
-    font-family: 'DM Sans', sans-serif; color: var(--text); width: 100%;
-  }
+  .day-content { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; }
+  .day-note { font-size: 13px; border: none; outline: none; background: none; font-family: 'DM Sans', sans-serif; color: var(--text); width: 100%; }
   .day-note::placeholder { color: var(--text-faint); }
+
+  /* Event chips */
+  .event-chips { display: flex; flex-direction: column; gap: 3px; }
+  .event-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--surface2); border: 1px solid var(--border-strong);
+    border-radius: 4px; padding: 2px 8px; font-size: 11px;
+    color: var(--text); cursor: pointer; transition: background 0.1s; width: fit-content;
+  }
+  .event-chip:hover { background: #E8E4DC; }
+  .event-chip .chip-title { font-weight: 500; }
+  .event-chip .chip-time  { color: var(--text-muted); font-size: 10px; }
+
+  .add-event-link {
+    font-size: 11px; color: var(--text-faint); background: none; border: 1px dashed var(--border-strong);
+    border-radius: 4px; padding: 2px 8px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s; width: fit-content; display: inline-block;
+  }
+  .add-event-link:hover { color: var(--text-muted); border-color: var(--text-muted); }
+
+  .day-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 5px; }
 
   .tag-btn {
     font-size: 10px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
@@ -158,115 +152,174 @@
     font-family: 'DM Sans', sans-serif; white-space: nowrap; transition: all 0.15s;
   }
   .tag-btn:hover { border-color: var(--text-muted); color: var(--text-muted); }
-  .tag-btn.t-travel { background: var(--travel-bg); color: var(--travel-text); border-color: var(--travel-border); }
-  .tag-btn.t-ooo { background: var(--ooo-bg); color: var(--ooo-text); border-color: var(--ooo-border); }
+  .tag-btn.t-travel   { background: var(--travel-bg);   color: var(--travel-text);   border-color: var(--travel-border); }
+  .tag-btn.t-ooo      { background: var(--ooo-bg);      color: var(--ooo-text);      border-color: var(--ooo-border); }
   .tag-btn.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
 
-  /* ===================== GRID VIEW ===================== */
+  /* ══════════ GRID VIEW ══════════ */
   #grid-view { display: none; }
 
-  .grid-dow-headers {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-    margin-bottom: 4px;
-  }
-  .dow-hdr {
-    text-align: center; font-size: 10px; font-weight: 500;
-    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint);
-    padding: 4px 0;
-  }
+  .grid-dow-headers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
+  .dow-hdr { text-align: center; font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); padding: 4px 0; }
 
   .grid-weeks { display: flex; flex-direction: column; gap: 4px; }
-  .grid-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .grid-week  { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 
   .grid-cell {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    min-height: 90px;
-    padding: 8px;
-    display: flex; flex-direction: column; gap: 4px;
-    transition: background 0.1s;
-    cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    min-height: 90px; padding: 8px; display: flex; flex-direction: column; gap: 3px;
+    transition: background 0.1s; cursor: pointer;
   }
-  .grid-cell.empty { background: none; border-color: transparent; cursor: default; }
-  .grid-cell.weekend { background: var(--weekend-bg); }
-  .grid-cell.is-today { background: var(--today-bg); border-color: var(--today-border); }
-  .grid-cell.status-travel { background: var(--travel-bg) !important; border-color: var(--travel-border); }
-  .grid-cell.status-ooo { background: var(--ooo-bg) !important; border-color: var(--ooo-border); }
+  .grid-cell.empty     { background: none; border-color: transparent; cursor: default; }
+  .grid-cell.weekend   { background: var(--weekend-bg); }
+  .grid-cell.is-today  { background: var(--today-bg); border-color: var(--today-border); }
+  .grid-cell.status-travel   { background: var(--travel-bg)   !important; border-color: var(--travel-border); }
+  .grid-cell.status-ooo      { background: var(--ooo-bg)      !important; border-color: var(--ooo-border); }
   .grid-cell.status-vacation { background: var(--vacation-bg) !important; border-color: var(--vacation-border); }
 
-  .cell-num {
-    font-size: 13px; font-weight: 500; color: var(--text-muted); line-height: 1;
-  }
+  .cell-num { font-size: 13px; font-weight: 500; color: var(--text-muted); line-height: 1; }
   .grid-cell.is-today .cell-num { color: var(--travel-text); }
-  .cell-note {
-    font-size: 11px; color: var(--text-muted); line-height: 1.3;
-    word-break: break-word; flex: 1;
+  .cell-note { font-size: 11px; color: var(--text-muted); line-height: 1.3; word-break: break-word; }
+
+  .cell-event-chip {
+    font-size: 10px; background: rgba(0,0,0,0.05); border-radius: 3px;
+    padding: 1px 5px; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .cell-event-chip .chip-time { color: var(--text-muted); margin-left: 3px; }
+
   .cell-tag {
     font-size: 9px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
-    padding: 2px 6px; border-radius: 10px; align-self: flex-start;
+    padding: 2px 6px; border-radius: 10px; align-self: flex-start; margin-top: auto;
   }
-  .cell-tag.t-travel { background: var(--travel-bg); color: var(--travel-text); }
-  .cell-tag.t-ooo { background: var(--ooo-bg); color: var(--ooo-text); }
+  .cell-tag.t-travel   { background: var(--travel-bg);   color: var(--travel-text); }
+  .cell-tag.t-ooo      { background: var(--ooo-bg);      color: var(--ooo-text); }
   .cell-tag.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); }
 
-  /* GRID LOCATION ROW */
-  .grid-loc-row {
-    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px;
-  }
+  /* Grid location row */
+  .grid-loc-row  { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
   .grid-loc-cell {
-    background: var(--surface2); border: 1px solid var(--border);
-    border-radius: var(--radius-sm); padding: 5px 8px;
-    font-size: 11px; color: var(--text-muted); font-style: italic;
-    min-height: 28px; display: flex; align-items: center;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 5px 8px; font-size: 11px; color: var(--text-muted); font-style: italic;
+    min-height: 28px; display: flex; align-items: center; transition: background 0.2s;
   }
-  .grid-loc-cell.span7 { grid-column: span 7; }
+  .grid-loc-cell.loc-travel   { background: var(--travel-bg);   color: var(--travel-text);   border-color: var(--travel-border);   font-style: normal; font-weight: 500; }
+  .grid-loc-cell.loc-ooo      { background: var(--ooo-bg);      color: var(--ooo-text);      border-color: var(--ooo-border);      font-style: normal; font-weight: 500; }
+  .grid-loc-cell.loc-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); font-style: normal; font-weight: 500; }
 
-  /* MODAL for grid cell editing */
+  /* ══════════ WEEK VIEWS ══════════ */
+  #week-list-view { display: none; flex-direction: column; gap: 6px; }
+  #week-grid-view { display: none; }
+
+  .week-day-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+
+  .week-day-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; background: var(--surface2); border-bottom: 1px solid var(--border);
+  }
+  .week-day-header.is-today  { background: var(--today-bg); }
+  .week-day-header.weekend   { background: var(--weekend-bg); }
+  .week-day-header.status-travel   { background: var(--travel-bg);   border-left: 3px solid var(--travel-border); }
+  .week-day-header.status-ooo      { background: var(--ooo-bg);      border-left: 3px solid var(--ooo-border); }
+  .week-day-header.status-vacation { background: var(--vacation-bg); border-left: 3px solid var(--vacation-border); }
+
+  .wdh-date { font-family: 'DM Serif Display', serif; font-size: 22px; line-height: 1; color: var(--text-muted); min-width: 28px; }
+  .week-day-header.is-today .wdh-date { color: var(--travel-text); }
+  .wdh-label { font-size: 13px; font-weight: 500; color: var(--text-muted); }
+  .week-day-header.is-today .wdh-label { color: var(--travel-text); }
+
+  .week-day-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .week-note-input {
+    width: 100%; border: none; outline: none; background: none;
+    font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text);
+  }
+  .week-note-input::placeholder { color: var(--text-faint); }
+
+  /* Week grid cells are taller */
+  #week-grid-view .grid-week .grid-cell { min-height: 200px; }
+
+  /* ══════════ MODAL ══════════ */
   .modal-overlay {
-    display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.3); z-index: 200;
-    align-items: center; justify-content: center;
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    z-index: 200; align-items: center; justify-content: center; padding: 1rem;
   }
   .modal-overlay.open { display: flex; }
   .modal {
-    background: var(--surface); border-radius: var(--radius);
-    padding: 1.5rem; width: 340px; box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    background: var(--surface); border-radius: var(--radius); padding: 1.5rem;
+    width: 480px; max-width: 100%; box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    max-height: 90vh; overflow-y: auto;
   }
-  .modal h3 { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 1rem; }
-  .modal textarea {
+  .modal-title { font-family: 'DM Serif Display', serif; font-size: 20px; margin-bottom: 1rem; }
+
+  .modal-section-label {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 6px; margin-top: 16px;
+  }
+  .modal-section-label:first-of-type { margin-top: 0; }
+
+  .modal-note-field {
     width: 100%; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
-    padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 13px;
-    resize: none; outline: none; height: 80px; color: var(--text);
-    background: var(--bg);
+    padding: 9px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    resize: none; outline: none; height: 56px; color: var(--text); background: var(--bg);
   }
-  .modal textarea:focus { border-color: var(--text-muted); }
-  .modal-tags { display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap; }
+  .modal-note-field:focus { border-color: var(--text-muted); }
+
+  .modal-tags { display: flex; gap: 6px; flex-wrap: wrap; }
   .modal-tag-btn {
     font-size: 11px; font-weight: 500; padding: 5px 12px; border-radius: 20px;
     border: 1px solid var(--border-strong); background: none; cursor: pointer;
     font-family: 'DM Sans', sans-serif; color: var(--text-muted); transition: all 0.15s;
   }
-  .modal-tag-btn.active.t-travel { background: var(--travel-bg); color: var(--travel-text); border-color: var(--travel-border); }
-  .modal-tag-btn.active.t-ooo { background: var(--ooo-bg); color: var(--ooo-text); border-color: var(--ooo-border); }
+  .modal-tag-btn.active.t-travel   { background: var(--travel-bg);   color: var(--travel-text);   border-color: var(--travel-border); }
+  .modal-tag-btn.active.t-ooo      { background: var(--ooo-bg);      color: var(--ooo-text);      border-color: var(--ooo-border); }
   .modal-tag-btn.active.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
-  .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
-  .modal-close {
+
+  /* Event cards in modal */
+  .modal-events-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+
+  .modal-event-card {
+    background: var(--bg); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm); padding: 12px;
+  }
+  .event-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .event-card-num { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+  .event-delete-btn { background: none; border: none; cursor: pointer; color: var(--text-faint); font-size: 18px; line-height: 1; padding: 0 2px; transition: color 0.15s; }
+  .event-delete-btn:hover { color: var(--ooo-text); }
+
+  .event-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .event-field      { display: flex; flex-direction: column; gap: 3px; }
+  .event-field.full { grid-column: span 2; }
+  .event-field label { font-size: 10px; color: var(--text-faint); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+  .event-field input {
+    border: 1px solid var(--border-strong); border-radius: 4px;
+    padding: 6px 8px; font-size: 12px; font-family: 'DM Sans', sans-serif;
+    color: var(--text); background: var(--surface); outline: none;
+  }
+  .event-field input:focus { border-color: var(--text-muted); }
+
+  .add-event-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
+    background: none; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
+    padding: 8px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; color: var(--text-muted); transition: all 0.15s;
+  }
+  .add-event-btn:hover { border-color: var(--text); color: var(--text); }
+
+  .modal-footer { display: flex; justify-content: flex-end; margin-top: 16px; }
+  .modal-save {
     background: var(--text); color: #fff; border: none; border-radius: var(--radius-sm);
-    padding: 8px 20px; cursor: pointer; font-family: 'DM Sans', sans-serif;
-    font-size: 13px; font-weight: 500;
+    padding: 8px 22px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 640px) {
     header { padding: 0 1rem; }
+    .brand span { display: none; }
     .month-nav { padding: 1rem 1rem 0.75rem; }
     main { padding: 0 1rem 2rem; }
     .legend { padding: 0 1rem 0.75rem; }
-    .week-inner { grid-template-columns: 110px 1fr; }
-    .modal { width: 90vw; }
+    .week-inner { grid-template-columns: 100px 1fr; }
+    .modal { width: 96vw; padding: 1rem; }
+    .event-fields { grid-template-columns: 1fr; }
+    .event-field.full { grid-column: span 1; }
   }
 </style>
 </head>
@@ -276,8 +329,10 @@
   <div class="brand">Field Planner <span>by FireTex</span></div>
   <div class="header-controls">
     <div class="view-toggle">
-      <button class="view-btn active" id="btn-list" onclick="setView('list')">List</button>
-      <button class="view-btn" id="btn-grid" onclick="setView('grid')">Calendar</button>
+      <button class="view-btn active" id="btn-list"      onclick="setView('list')">List</button>
+      <button class="view-btn"        id="btn-grid"      onclick="setView('grid')">Calendar</button>
+      <button class="view-btn"        id="btn-week-list" onclick="setView('week-list')">Week List</button>
+      <button class="view-btn"        id="btn-week-grid" onclick="setView('week-grid')">Week Cal</button>
     </div>
   </div>
 </header>
@@ -285,8 +340,8 @@
 <div class="month-nav">
   <h2 id="month-title"></h2>
   <div class="nav-buttons">
-    <button class="nav-btn" onclick="changeMonth(-1)">← Prev</button>
-    <button class="nav-btn" onclick="changeMonth(1)">Next →</button>
+    <button class="nav-btn" onclick="navPrev()">← Prev</button>
+    <button class="nav-btn" onclick="navNext()">Next →</button>
   </div>
 </div>
 
@@ -300,121 +355,117 @@
 <main>
   <div id="list-view"></div>
   <div id="grid-view"></div>
+  <div id="week-list-view"></div>
+  <div id="week-grid-view"></div>
 </main>
 
 <!-- MODAL -->
-<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
-  <div class="modal">
-    <h3 id="modal-title"></h3>
-    <textarea id="modal-note" placeholder="Add a note for this day..."></textarea>
+<div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title"></div>
+
+    <div class="modal-section-label">Note</div>
+    <textarea class="modal-note-field" id="modal-note" placeholder="Add a note for this day..."></textarea>
+
+    <div class="modal-section-label">Status</div>
     <div class="modal-tags">
-      <button class="modal-tag-btn t-travel" id="mtag-travel" onclick="toggleModalTag('travel')">Travel</button>
-      <button class="modal-tag-btn t-ooo" id="mtag-ooo" onclick="toggleModalTag('ooo')">Out of office</button>
+      <button class="modal-tag-btn t-travel"   id="mtag-travel"   onclick="toggleModalTag('travel')">Travel</button>
+      <button class="modal-tag-btn t-ooo"      id="mtag-ooo"      onclick="toggleModalTag('ooo')">Out of office</button>
       <button class="modal-tag-btn t-vacation" id="mtag-vacation" onclick="toggleModalTag('vacation')">Vacation</button>
     </div>
+
+    <div class="modal-section-label">Events</div>
+    <div class="modal-events-list" id="modal-events-list"></div>
+    <button class="add-event-btn" onclick="addModalEvent()">+ Add Event</button>
+
     <div class="modal-footer">
-      <button class="modal-close" onclick="saveModal()">Done</button>
+      <button class="modal-save" onclick="saveModal()">Done</button>
     </div>
   </div>
 </div>
 
 <script>
-const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const DAYS_SHORT = ['S','M','T','W','T','F','S'];
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const STATUSES = ['travel','ooo','vacation'];
+const DAYS        = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS      = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_SHORT= ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const STATUSES    = ['travel','ooo','vacation'];
 const STATUS_LABELS = { travel: 'Travel', ooo: 'OOO', vacation: 'Vacation' };
 
 const today = new Date();
-let cur = { year: today.getFullYear(), month: today.getMonth() };
-let currentView = 'list';
-let modalDk = null;
+today.setHours(0,0,0,0);
 
-// ===================== DATA LAYER =====================
-// localStorage = instant cache; Upstash Redis (via /api/data) = cross-device sync.
-// Auth: ?secret=<FP_API_SECRET> in the URL, stored in localStorage once provided.
+let cur = { year: today.getFullYear(), month: today.getMonth() };
+let curWeekStart  = getWeekStart(today);
+let currentView   = 'list';
+let modalDk       = null;
+let modalEvents   = [];
+
+function getWeekStart(date) {
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+
+// ── DATA LAYER ──────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'fp-data';
-const SECRET_KEY = 'fp-secret';
+const SECRET_KEY  = 'fp-secret';
 function loadLocal() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; } }
 function saveLocal(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
 
-// Grab secret from URL ?secret=xxx (first visit) or localStorage (subsequent)
 (function initSecret() {
   const params = new URLSearchParams(window.location.search);
   const s = params.get('secret');
   if (s) { localStorage.setItem(SECRET_KEY, s); window.history.replaceState({}, '', window.location.pathname); }
 })();
-function getSecret() { return localStorage.getItem(SECRET_KEY) || ''; }
 
-function apiHeaders() {
-  const h = { 'Content-Type': 'application/json' };
-  const s = getSecret();
-  if (s) h['Authorization'] = 'Bearer ' + s;
-  return h;
-}
+function getSecret()   { return localStorage.getItem(SECRET_KEY) || ''; }
+function apiHeaders()  { const h = {'Content-Type':'application/json'}; const s = getSecret(); if (s) h['Authorization'] = 'Bearer ' + s; return h; }
 
-let DATA = loadLocal();
-let _syncTimer = null;
-let _pushing = false;
+let DATA      = loadLocal();
+let _syncTimer= null;
+let _pushing  = false;
 
 function saveData(d) {
   saveLocal(d);
   clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(pushToRemote, 800);  // debounce 800ms
+  _syncTimer = setTimeout(pushToRemote, 800);
 }
 
 async function pushToRemote() {
-  if (_pushing) return;            // avoid overlapping writes
+  if (_pushing) return;
   _pushing = true;
   try {
-    console.log('[FP] Pushing data to remote...');
-    const res = await fetch('/api/data', {
-      method: 'POST',
-      headers: apiHeaders(),
-      body: JSON.stringify(DATA),
-    });
-    console.log('[FP] Push response:', res.status);
+    const res = await fetch('/api/data', { method: 'POST', headers: apiHeaders(), body: JSON.stringify(DATA) });
     if (!res.ok) throw new Error(res.status);
-    console.log('[FP] Push succeeded');
-  } catch (e) {
-    console.warn('[FP] Sync push failed, will retry on next edit:', e);
-  } finally {
-    _pushing = false;
-  }
+  } catch(e) { console.warn('[FP] Sync push failed:', e); }
+  finally    { _pushing = false; }
 }
 
-// On page load: fetch remote data, merge with local cache, re-render.
-// If local has data that remote doesn't (first deploy migration), push it up.
 (async function syncOnLoad() {
-  console.log('[FP] syncOnLoad starting, secret present:', !!getSecret());
-  console.log('[FP] Local DATA keys:', Object.keys(DATA).length);
   try {
     const res = await fetch('/api/data', { headers: apiHeaders() });
-    console.log('[FP] Remote fetch status:', res.status);
     if (!res.ok) throw new Error(res.status);
     const remote = await res.json();
-    console.log('[FP] Remote data keys:', Object.keys(remote).length);
-    const localHadKeys = Object.keys(DATA).length > 0;
+    const localHadKeys  = Object.keys(DATA).length > 0;
     const remoteIsEmpty = Object.keys(remote).length === 0;
-    // Remote wins for any key it has; local keys not in remote are kept
     Object.assign(DATA, remote);
     saveLocal(DATA);
     render();
-    // First-time migration: push local data up if remote DB is empty
-    if (localHadKeys && remoteIsEmpty) {
-      console.log('[FP] Migrating local data to remote DB...');
-      await pushToRemote();
-    }
-  } catch (e) {
-    console.warn('[FP] Could not fetch remote data, using local cache:', e);
-  }
+    if (localHadKeys && remoteIsEmpty) await pushToRemote();
+  } catch(e) { console.warn('[FP] Remote fetch failed, using local cache:', e); }
 })();
 
-function dk(y,m,d) { return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
-function lk(y,m,w) { return `loc-${y}-${m}-${w}`; }
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+function dk(y, m, d) { return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+function dkFromDate(date) { return dk(date.getFullYear(), date.getMonth(), date.getDate()); }
+function lk(y, m, w) { return `loc-${y}-${m}-${w}`; }
+
+function isPast(date)  { const d = new Date(date); d.setHours(0,0,0,0); return d < today; }
+function isToday(date) { const d = new Date(date); d.setHours(0,0,0,0); return d.getTime() === today.getTime(); }
 
 function getWeeks(year, month) {
-  const last = new Date(year, month + 1, 0).getDate();
+  const last  = new Date(year, month + 1, 0).getDate();
   const weeks = [];
   let wk = [];
   for (let d = 1; d <= last; d++) {
@@ -426,76 +477,119 @@ function getWeeks(year, month) {
   return weeks;
 }
 
-function isToday(date) {
-  return date.getFullYear() === today.getFullYear() &&
-         date.getMonth() === today.getMonth() &&
-         date.getDate() === today.getDate();
+function getWeekDates(weekStart) {
+  return Array.from({length: 7}, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    return d;
+  });
+}
+
+function getEvents(key) { try { return JSON.parse(DATA[key+'-events'] || '[]'); } catch(e) { return []; } }
+function saveEvents(key, evs) { DATA[key+'-events'] = JSON.stringify(evs); saveData(DATA); }
+
+function formatTime(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  if (isNaN(h)) return t;
+  const ap  = h >= 12 ? 'pm' : 'am';
+  const h12 = h % 12 || 12;
+  return m ? `${h12}:${String(m).padStart(2,'0')}${ap}` : `${h12}${ap}`;
+}
+function formatTimeRange(s, e) {
+  if (!s && !e) return '';
+  if (s && e)   return `${formatTime(s)}–${formatTime(e)}`;
+  return formatTime(s || e);
+}
+
+function getDominantStatus(days) {
+  const counts = {};
+  days.forEach(date => { const s = DATA[dkFromDate(date)+'-status']; if (s) counts[s] = (counts[s]||0)+1; });
+  if (!Object.keys(counts).length) return null;
+  return Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
 }
 
 function cycleStatus(key) {
-  const cur = DATA[key+'-status'] || null;
-  const idx = STATUSES.indexOf(cur);
+  const s   = DATA[key+'-status'] || null;
+  const idx = STATUSES.indexOf(s);
   DATA[key+'-status'] = idx >= STATUSES.length - 1 ? null : STATUSES[idx + 1];
   saveData(DATA);
   render();
 }
 
-// ===================== LIST VIEW =====================
+function chipHTML(ev, key) {
+  const t = formatTimeRange(ev.startTime, ev.endTime);
+  return `<div class="event-chip" data-key="${key}">
+    <span class="chip-title">${ev.title||'Untitled'}</span>
+    ${t ? `<span class="chip-time">${t}</span>` : ''}
+  </div>`;
+}
+function cellChipHTML(ev) {
+  const t = formatTimeRange(ev.startTime, ev.endTime);
+  return `<div class="cell-event-chip">${ev.title||'Untitled'}${t?` <span class="chip-time">${t}</span>`:''}</div>`;
+}
+
+// ── LIST VIEW ────────────────────────────────────────────────────────────────
 function renderList() {
   const { year, month } = cur;
   const weeks = getWeeks(year, month);
-  const el = document.getElementById('list-view');
+  const el    = document.getElementById('list-view');
   el.innerHTML = '';
 
   weeks.forEach((week, wi) => {
-    const lockey = lk(year, month, wi);
+    const lockey         = lk(year, month, wi);
+    const dominantStatus = getDominantStatus(week);
+
     const block = document.createElement('div');
     block.className = 'week-block';
-
     const inner = document.createElement('div');
     inner.className = 'week-inner';
 
     // Location column
     const locCol = document.createElement('div');
-    locCol.className = 'loc-col';
+    locCol.className = 'loc-col' + (dominantStatus ? ' loc-'+dominantStatus : '');
     locCol.innerHTML = `<span class="loc-pin">●</span><textarea class="loc-input" placeholder="Location..." rows="2">${DATA[lockey]||''}</textarea>`;
-    locCol.querySelector('textarea').addEventListener('input', e => {
-      DATA[lockey] = e.target.value; saveData(DATA);
-    });
+    locCol.querySelector('textarea').addEventListener('input', e => { DATA[lockey] = e.target.value; saveData(DATA); });
 
     // Days column
     const daysCol = document.createElement('div');
     daysCol.className = 'days-col';
 
     week.forEach(date => {
-      const dow = date.getDay();
+      const dow     = date.getDay();
+      const key     = dkFromDate(date);
+      const status  = DATA[key+'-status'] || null;
+      const note    = DATA[key] || '';
+      const events  = getEvents(key);
       const weekend = dow === 0 || dow === 6;
-      const today_ = isToday(date);
-      const key = dk(date.getFullYear(), date.getMonth(), date.getDate());
-      const status = DATA[key+'-status'] || null;
-      const note = DATA[key] || '';
 
       const row = document.createElement('div');
       let cls = 'day-row';
-      if (weekend) cls += ' weekend';
-      if (today_) cls += ' is-today';
-      if (status) cls += ' status-' + status;
+      if (weekend)  cls += ' weekend';
+      if (isToday(date)) cls += ' is-today';
+      if (isPast(date))  cls += ' past';
+      if (status)   cls += ' status-'+status;
       row.className = cls;
 
-      const tagCls = status ? `tag-btn t-${status}` : 'tag-btn';
+      const tagCls   = status ? `tag-btn t-${status}` : 'tag-btn';
       const tagLabel = status ? STATUS_LABELS[status] : 'Tag';
+      const chipsHTML = events.map(ev => chipHTML(ev, key)).join('');
 
       row.innerHTML = `
         <div class="day-label">${DAYS[dow]} <span class="daynum">${date.getDate()}</span></div>
-        <input class="day-note" placeholder="—" value="${note.replace(/"/g,'&quot;')}" data-key="${key}" />
-        <button class="${tagCls}" data-key="${key}">${tagLabel}</button>
+        <div class="day-content">
+          <input class="day-note" placeholder="—" value="${note.replace(/"/g,'&quot;')}" data-key="${key}" />
+          <div class="event-chips">${chipsHTML}</div>
+          <button class="add-event-link" data-key="${key}">+ event</button>
+        </div>
+        <div class="day-row-right">
+          <button class="${tagCls}" data-key="${key}">${tagLabel}</button>
+        </div>
       `;
-      row.querySelector('.day-note').addEventListener('input', e => {
-        DATA[e.target.dataset.key] = e.target.value; saveData(DATA);
-      });
-      row.querySelector('.tag-btn').addEventListener('click', e => {
-        cycleStatus(e.target.dataset.key);
-      });
+      row.querySelector('.day-note').addEventListener('input', e => { DATA[e.target.dataset.key] = e.target.value; saveData(DATA); });
+      row.querySelector('.tag-btn').addEventListener('click', e => cycleStatus(e.target.dataset.key));
+      row.querySelector('.add-event-link').addEventListener('click', e => openModal(e.target.dataset.key, date, true));
+      row.querySelectorAll('.event-chip').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
       daysCol.appendChild(row);
     });
 
@@ -506,14 +600,13 @@ function renderList() {
   });
 }
 
-// ===================== GRID VIEW =====================
+// ── GRID VIEW ────────────────────────────────────────────────────────────────
 function renderGrid() {
   const { year, month } = cur;
   const weeks = getWeeks(year, month);
-  const el = document.getElementById('grid-view');
+  const el    = document.getElementById('grid-view');
   el.innerHTML = '';
 
-  // DOW headers
   const hdrs = document.createElement('div');
   hdrs.className = 'grid-dow-headers';
   ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
@@ -527,92 +620,248 @@ function renderGrid() {
   weeksEl.className = 'grid-weeks';
 
   weeks.forEach((week, wi) => {
-    const lockey = lk(year, month, wi);
-    const locVal = DATA[lockey] || '';
+    const lockey         = lk(year, month, wi);
+    const locVal         = DATA[lockey] || '';
+    const dominantStatus = getDominantStatus(week);
+    const startDow       = week[0].getDay();
+    const endDow         = week[week.length-1].getDay();
 
     // Location bar
     const locRow = document.createElement('div');
     locRow.className = 'grid-loc-row';
-    const startDow = week[0].getDay();
-    const endDow = week[week.length-1].getDay();
-
-    // Fill empty cells before
-    for (let i = 0; i < startDow; i++) {
-      const empty = document.createElement('div'); locRow.appendChild(empty);
-    }
+    for (let i = 0; i < startDow; i++) locRow.appendChild(document.createElement('div'));
     const locCell = document.createElement('div');
-    locCell.className = 'grid-loc-cell';
+    locCell.className = 'grid-loc-cell' + (dominantStatus ? ' loc-'+dominantStatus : '');
     locCell.style.gridColumn = `span ${week.length}`;
     locCell.textContent = locVal || '— no location set';
     locRow.appendChild(locCell);
-    // Fill empty cells after
-    for (let i = endDow + 1; i < 7; i++) {
-      const empty = document.createElement('div'); locRow.appendChild(empty);
-    }
+    for (let i = endDow + 1; i < 7; i++) locRow.appendChild(document.createElement('div'));
     weeksEl.appendChild(locRow);
 
     // Week row
     const weekRow = document.createElement('div');
     weekRow.className = 'grid-week';
-
-    // Pad start
-    for (let i = 0; i < startDow; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'grid-cell empty';
-      weekRow.appendChild(cell);
-    }
+    for (let i = 0; i < startDow; i++) { const c = document.createElement('div'); c.className = 'grid-cell empty'; weekRow.appendChild(c); }
 
     week.forEach(date => {
-      const dow = date.getDay();
-      const weekend = dow === 0 || dow === 6;
-      const today_ = isToday(date);
-      const key = dk(date.getFullYear(), date.getMonth(), date.getDate());
+      const dow    = date.getDay();
+      const key    = dkFromDate(date);
       const status = DATA[key+'-status'] || null;
-      const note = DATA[key] || '';
+      const note   = DATA[key] || '';
+      const events = getEvents(key);
 
       const cell = document.createElement('div');
       let cls = 'grid-cell';
-      if (weekend) cls += ' weekend';
-      if (today_) cls += ' is-today';
-      if (status) cls += ' status-' + status;
+      if (dow === 0 || dow === 6) cls += ' weekend';
+      if (isToday(date)) cls += ' is-today';
+      if (isPast(date))  cls += ' past';
+      if (status)        cls += ' status-'+status;
       cell.className = cls;
-      cell.dataset.key = key;
-      cell.dataset.date = date.toDateString();
+
       cell.innerHTML = `
         <div class="cell-num">${date.getDate()}</div>
-        ${note ? `<div class="cell-note">${note}</div>` : ''}
+        ${note   ? `<div class="cell-note">${note}</div>` : ''}
+        ${events.map(ev => cellChipHTML(ev)).join('')}
         ${status ? `<div class="cell-tag t-${status}">${STATUS_LABELS[status]}</div>` : ''}
       `;
       cell.addEventListener('click', () => openModal(key, date));
       weekRow.appendChild(cell);
     });
 
-    // Pad end
-    for (let i = endDow + 1; i < 7; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'grid-cell empty';
-      weekRow.appendChild(cell);
-    }
-
+    for (let i = endDow + 1; i < 7; i++) { const c = document.createElement('div'); c.className = 'grid-cell empty'; weekRow.appendChild(c); }
     weeksEl.appendChild(weekRow);
   });
 
   el.appendChild(weeksEl);
 }
 
-// ===================== MODAL =====================
-function openModal(key, date) {
-  modalDk = key;
-  const note = DATA[key] || '';
-  const status = DATA[key+'-status'] || null;
-  document.getElementById('modal-title').textContent = date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-  document.getElementById('modal-note').value = note;
-  STATUSES.forEach(s => {
-    const btn = document.getElementById('mtag-' + s);
-    btn.className = 'modal-tag-btn t-' + s + (status === s ? ' active' : '');
+// ── WEEK LIST VIEW ───────────────────────────────────────────────────────────
+function renderWeekList() {
+  const dates = getWeekDates(curWeekStart);
+  const el    = document.getElementById('week-list-view');
+  el.innerHTML = '';
+
+  dates.forEach(date => {
+    const dow    = date.getDay();
+    const key    = dkFromDate(date);
+    const status = DATA[key+'-status'] || null;
+    const note   = DATA[key] || '';
+    const events = getEvents(key);
+
+    const block = document.createElement('div');
+    block.className = 'week-day-block' + (isPast(date) ? ' past' : '');
+
+    let hdrCls = 'week-day-header';
+    if (isToday(date)) hdrCls += ' is-today';
+    else if (dow === 0 || dow === 6) hdrCls += ' weekend';
+    if (status) hdrCls += ' status-'+status;
+
+    const tagCls   = status ? `tag-btn t-${status}` : 'tag-btn';
+    const tagLabel = status ? STATUS_LABELS[status] : 'Tag';
+    const chipsHTML = events.map(ev => chipHTML(ev, key)).join('');
+
+    block.innerHTML = `
+      <div class="${hdrCls}">
+        <div class="wdh-date">${date.getDate()}</div>
+        <div class="wdh-label">${DAYS[dow]}, ${MONTHS_SHORT[date.getMonth()]}</div>
+        <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+          <button class="${tagCls}" data-key="${key}">${tagLabel}</button>
+        </div>
+      </div>
+      <div class="week-day-body">
+        <input class="week-note-input" placeholder="Add a note…" value="${note.replace(/"/g,'&quot;')}" data-key="${key}" />
+        <div class="event-chips">${chipsHTML}</div>
+        <button class="add-event-link" data-key="${key}">+ add event</button>
+      </div>
+    `;
+    block.querySelector('.tag-btn').addEventListener('click', e => cycleStatus(e.target.dataset.key));
+    block.querySelector('.week-note-input').addEventListener('input', e => { DATA[e.target.dataset.key] = e.target.value; saveData(DATA); });
+    block.querySelector('.add-event-link').addEventListener('click', e => openModal(e.target.dataset.key, date, true));
+    block.querySelectorAll('.event-chip').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
+    el.appendChild(block);
   });
+}
+
+// ── WEEK GRID VIEW ───────────────────────────────────────────────────────────
+function renderWeekGrid() {
+  const dates = getWeekDates(curWeekStart);
+  const el    = document.getElementById('week-grid-view');
+  el.innerHTML = '';
+
+  const hdrs = document.createElement('div');
+  hdrs.className = 'grid-dow-headers';
+  dates.forEach(date => {
+    const h = document.createElement('div');
+    h.className = 'dow-hdr';
+    h.textContent = `${DAYS[date.getDay()]} ${date.getDate()}`;
+    hdrs.appendChild(h);
+  });
+  el.appendChild(hdrs);
+
+  const row = document.createElement('div');
+  row.className = 'grid-week';
+
+  dates.forEach(date => {
+    const dow    = date.getDay();
+    const key    = dkFromDate(date);
+    const status = DATA[key+'-status'] || null;
+    const note   = DATA[key] || '';
+    const events = getEvents(key);
+
+    const cell = document.createElement('div');
+    let cls = 'grid-cell';
+    if (dow === 0 || dow === 6) cls += ' weekend';
+    if (isToday(date)) cls += ' is-today';
+    if (isPast(date))  cls += ' past';
+    if (status)        cls += ' status-'+status;
+    cell.className = cls;
+
+    cell.innerHTML = `
+      <div class="cell-num">${date.getDate()}</div>
+      ${note   ? `<div class="cell-note">${note}</div>` : ''}
+      ${events.map(ev => cellChipHTML(ev)).join('')}
+      ${status ? `<div class="cell-tag t-${status}">${STATUS_LABELS[status]}</div>` : ''}
+    `;
+    cell.addEventListener('click', () => openModal(key, date));
+    row.appendChild(cell);
+  });
+
+  el.appendChild(row);
+}
+
+// ── MODAL ────────────────────────────────────────────────────────────────────
+function openModal(key, date, addEventImmediate = false) {
+  modalDk     = key;
+  modalEvents = getEvents(key);
+
+  document.getElementById('modal-title').textContent =
+    date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  document.getElementById('modal-note').value = DATA[key] || '';
+
+  const status = DATA[key+'-status'] || null;
+  STATUSES.forEach(s => {
+    document.getElementById('mtag-'+s).className = 'modal-tag-btn t-'+s + (status === s ? ' active' : '');
+  });
+
+  renderModalEvents();
   document.getElementById('modal-overlay').classList.add('open');
-  setTimeout(() => document.getElementById('modal-note').focus(), 50);
+
+  if (addEventImmediate) {
+    addModalEvent();
+  } else {
+    setTimeout(() => document.getElementById('modal-note').focus(), 50);
+  }
+}
+
+function renderModalEvents() {
+  const container = document.getElementById('modal-events-list');
+  container.innerHTML = '';
+
+  modalEvents.forEach((ev, idx) => {
+    const card = document.createElement('div');
+    card.className = 'modal-event-card';
+    card.innerHTML = `
+      <div class="event-card-header">
+        <div class="event-card-num">Event ${idx + 1}</div>
+        <button class="event-delete-btn" data-idx="${idx}" title="Remove">×</button>
+      </div>
+      <div class="event-fields">
+        <div class="event-field full">
+          <label>Title</label>
+          <input type="text"   data-idx="${idx}" data-field="title"     value="${esc(ev.title)}"    placeholder="Event title" />
+        </div>
+        <div class="event-field">
+          <label>Business Name</label>
+          <input type="text"   data-idx="${idx}" data-field="business"  value="${esc(ev.business)}" placeholder="Company / venue" />
+        </div>
+        <div class="event-field">
+          <label>Location</label>
+          <input type="text"   data-idx="${idx}" data-field="location"  value="${esc(ev.location)}" placeholder="Address / city" />
+        </div>
+        <div class="event-field">
+          <label>Start Time</label>
+          <input type="time"   data-idx="${idx}" data-field="startTime" value="${ev.startTime||''}" />
+        </div>
+        <div class="event-field">
+          <label>End Time</label>
+          <input type="time"   data-idx="${idx}" data-field="endTime"   value="${ev.endTime||''}" />
+        </div>
+        <div class="event-field">
+          <label>Contact Name</label>
+          <input type="text"   data-idx="${idx}" data-field="contact"   value="${esc(ev.contact)}"  placeholder="Contact person" />
+        </div>
+        <div class="event-field">
+          <label>Contact Email</label>
+          <input type="email"  data-idx="${idx}" data-field="email"     value="${esc(ev.email)}"    placeholder="email@example.com" />
+        </div>
+      </div>
+    `;
+    card.querySelector('.event-delete-btn').addEventListener('click', e => {
+      modalEvents.splice(parseInt(e.target.dataset.idx), 1);
+      renderModalEvents();
+    });
+    card.querySelectorAll('input[data-field]').forEach(input => {
+      input.addEventListener('input', e => {
+        modalEvents[parseInt(e.target.dataset.idx)][e.target.dataset.field] = e.target.value;
+      });
+    });
+    container.appendChild(card);
+  });
+}
+
+function esc(str) { return (str||'').replace(/"/g,'&quot;'); }
+
+function addModalEvent() {
+  modalEvents.push({ id: Date.now().toString(), title:'', business:'', location:'', startTime:'', endTime:'', contact:'', email:'' });
+  renderModalEvents();
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.modal-event-card');
+    if (!cards.length) return;
+    const last = cards[cards.length - 1];
+    last.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    const titleInput = last.querySelector('input[data-field="title"]');
+    if (titleInput) titleInput.focus();
+  }, 50);
 }
 
 function toggleModalTag(status) {
@@ -620,50 +869,86 @@ function toggleModalTag(status) {
   DATA[modalDk+'-status'] = cur === status ? null : status;
   saveData(DATA);
   STATUSES.forEach(s => {
-    const btn = document.getElementById('mtag-' + s);
-    btn.className = 'modal-tag-btn t-' + s + (DATA[modalDk+'-status'] === s ? ' active' : '');
+    document.getElementById('mtag-'+s).className = 'modal-tag-btn t-'+s + (DATA[modalDk+'-status'] === s ? ' active' : '');
   });
 }
 
 function saveModal() {
   if (modalDk) {
     DATA[modalDk] = document.getElementById('modal-note').value;
-    saveData(DATA);
+    saveEvents(modalDk, modalEvents.filter(ev => ev.title || ev.business || ev.startTime || ev.endTime));
   }
   document.getElementById('modal-overlay').classList.remove('open');
-  modalDk = null;
+  modalDk     = null;
+  modalEvents = [];
   render();
 }
 
-function closeModal(e) {
+function handleOverlayClick(e) {
   if (e.target === document.getElementById('modal-overlay')) saveModal();
 }
 
-// ===================== CORE =====================
+// ── CORE ─────────────────────────────────────────────────────────────────────
+const VIEW_IDS = ['list','grid','week-list','week-grid'];
+
 function setView(v) {
   currentView = v;
-  document.getElementById('list-view').style.display = v === 'list' ? 'flex' : 'none';
-  document.getElementById('grid-view').style.display = v === 'grid' ? 'block' : 'none';
-  document.getElementById('btn-list').className = 'view-btn' + (v === 'list' ? ' active' : '');
-  document.getElementById('btn-grid').className = 'view-btn' + (v === 'grid' ? ' active' : '');
+  document.getElementById('list-view').style.display      = v === 'list'      ? 'flex'  : 'none';
+  document.getElementById('grid-view').style.display      = v === 'grid'      ? 'block' : 'none';
+  document.getElementById('week-list-view').style.display = v === 'week-list' ? 'flex'  : 'none';
+  document.getElementById('week-grid-view').style.display = v === 'week-grid' ? 'block' : 'none';
+  VIEW_IDS.forEach(id => {
+    document.getElementById('btn-'+id).className = 'view-btn' + (v === id ? ' active' : '');
+  });
+  render();
+}
+
+function navPrev() {
+  if (currentView === 'week-list' || currentView === 'week-grid') {
+    curWeekStart = new Date(curWeekStart);
+    curWeekStart.setDate(curWeekStart.getDate() - 7);
+  } else {
+    cur.month--;
+    if (cur.month < 0) { cur.month = 11; cur.year--; }
+  }
+  render();
+}
+
+function navNext() {
+  if (currentView === 'week-list' || currentView === 'week-grid') {
+    curWeekStart = new Date(curWeekStart);
+    curWeekStart.setDate(curWeekStart.getDate() + 7);
+  } else {
+    cur.month++;
+    if (cur.month > 11) { cur.month = 0; cur.year++; }
+  }
   render();
 }
 
 function render() {
-  document.getElementById('month-title').textContent = `${MONTHS[cur.month]} ${cur.year}`;
-  if (currentView === 'list') renderList();
-  else renderGrid();
+  if (currentView === 'week-list' || currentView === 'week-grid') {
+    const dates    = getWeekDates(curWeekStart);
+    const start    = dates[0];
+    const end      = dates[6];
+    const sameMonth = start.getMonth() === end.getMonth();
+    document.getElementById('month-title').textContent = sameMonth
+      ? `${MONTHS_SHORT[start.getMonth()]} ${start.getDate()}–${end.getDate()}, ${start.getFullYear()}`
+      : `${MONTHS_SHORT[start.getMonth()]} ${start.getDate()} – ${MONTHS_SHORT[end.getMonth()]} ${end.getDate()}, ${end.getFullYear()}`;
+  } else {
+    document.getElementById('month-title').textContent = `${MONTHS[cur.month]} ${cur.year}`;
+  }
+
+  if      (currentView === 'list')      renderList();
+  else if (currentView === 'grid')      renderGrid();
+  else if (currentView === 'week-list') renderWeekList();
+  else if (currentView === 'week-grid') renderWeekGrid();
 }
 
-function changeMonth(dir) {
-  cur.month += dir;
-  if (cur.month > 11) { cur.month = 0; cur.year++; }
-  if (cur.month < 0) { cur.month = 11; cur.year--; }
-  render();
-}
-
-document.getElementById('list-view').style.display = 'flex';
-document.getElementById('grid-view').style.display = 'none';
+// Initial display state
+document.getElementById('list-view').style.display      = 'flex';
+document.getElementById('grid-view').style.display      = 'none';
+document.getElementById('week-list-view').style.display = 'none';
+document.getElementById('week-grid-view').style.display = 'none';
 render();
 </script>
 </body>
