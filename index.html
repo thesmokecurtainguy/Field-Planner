@@ -20,6 +20,7 @@
     --travel-bg: #EBF3FC; --travel-border: #378ADD; --travel-text: #0C447C;
     --ooo-bg: #FAECE7; --ooo-border: #D85A30; --ooo-text: #993C1D;
     --vacation-bg: #E3F5EE; --vacation-border: #1D9E75; --vacation-text: #0F6E56;
+    --family-bg: #F3EEFB; --family-border: #9B59D0; --family-text: #5B2D8E;
     --today-bg: #EBF3FC; --today-border: #378ADD;
     --weekend-bg: #F5F3EE;
     --past-opacity: 0.42;
@@ -65,6 +66,7 @@
   .pip-travel { background: var(--travel-border); }
   .pip-ooo { background: var(--ooo-border); }
   .pip-vacation { background: var(--vacation-border); }
+  .pip-family   { background: var(--family-border); }
   .pip-weekend { background: var(--text-faint); }
 
   main { padding: 0 2rem 3rem; }
@@ -88,11 +90,13 @@
   .loc-col.loc-travel  { background: var(--travel-bg);   border-right-color: var(--travel-border); }
   .loc-col.loc-ooo     { background: var(--ooo-bg);      border-right-color: var(--ooo-border); }
   .loc-col.loc-vacation{ background: var(--vacation-bg); border-right-color: var(--vacation-border); }
+  .loc-col.loc-family  { background: var(--family-bg);  border-right-color: var(--family-border); }
 
   .loc-pin { font-size: 11px; color: var(--text-faint); margin-right: 5px; margin-top: 1px; flex-shrink: 0; }
   .loc-col.loc-travel   .loc-pin { color: var(--travel-text); }
   .loc-col.loc-ooo      .loc-pin { color: var(--ooo-text); }
   .loc-col.loc-vacation .loc-pin { color: var(--vacation-text); }
+  .loc-col.loc-family   .loc-pin { color: var(--family-text); }
 
   .loc-input {
     background: none; border: none; outline: none;
@@ -115,6 +119,7 @@
   .day-row.status-travel   { background: var(--travel-bg)   !important; border-left: 3px solid var(--travel-border); }
   .day-row.status-ooo      { background: var(--ooo-bg)      !important; border-left: 3px solid var(--ooo-border); }
   .day-row.status-vacation { background: var(--vacation-bg) !important; border-left: 3px solid var(--vacation-border); }
+  .day-row.status-family   { background: var(--family-bg)   !important; border-left: 3px solid var(--family-border); }
 
   .day-label { font-size: 12px; font-weight: 500; color: var(--text-muted); white-space: nowrap; display: flex; align-items: baseline; gap: 4px; padding-top: 5px; }
   .day-label .daynum { font-size: 11px; font-weight: 300; color: var(--text-faint); }
@@ -155,6 +160,7 @@
   .tag-btn.t-travel   { background: var(--travel-bg);   color: var(--travel-text);   border-color: var(--travel-border); }
   .tag-btn.t-ooo      { background: var(--ooo-bg);      color: var(--ooo-text);      border-color: var(--ooo-border); }
   .tag-btn.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
+  .tag-btn.t-family   { background: var(--family-bg);   color: var(--family-text);   border-color: var(--family-border); }
 
   /* ══════════ GRID VIEW ══════════ */
   #grid-view { display: none; }
@@ -176,6 +182,7 @@
   .grid-cell.status-travel   { background: var(--travel-bg)   !important; border-color: var(--travel-border); }
   .grid-cell.status-ooo      { background: var(--ooo-bg)      !important; border-color: var(--ooo-border); }
   .grid-cell.status-vacation { background: var(--vacation-bg) !important; border-color: var(--vacation-border); }
+  .grid-cell.status-family   { background: var(--family-bg)   !important; border-color: var(--family-border); }
 
   .cell-num { font-size: 13px; font-weight: 500; color: var(--text-muted); line-height: 1; }
   .grid-cell.is-today .cell-num { color: var(--travel-text); }
@@ -194,6 +201,7 @@
   .cell-tag.t-travel   { background: var(--travel-bg);   color: var(--travel-text); }
   .cell-tag.t-ooo      { background: var(--ooo-bg);      color: var(--ooo-text); }
   .cell-tag.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); }
+  .cell-tag.t-family   { background: var(--family-bg);   color: var(--family-text); }
 
   /* Grid location row */
   .grid-loc-row  { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
@@ -205,6 +213,7 @@
   .grid-loc-cell.loc-travel   { background: var(--travel-bg);   color: var(--travel-text);   border-color: var(--travel-border);   font-style: normal; font-weight: 500; }
   .grid-loc-cell.loc-ooo      { background: var(--ooo-bg);      color: var(--ooo-text);      border-color: var(--ooo-border);      font-style: normal; font-weight: 500; }
   .grid-loc-cell.loc-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); font-style: normal; font-weight: 500; }
+  .grid-loc-cell.loc-family   { background: var(--family-bg);   color: var(--family-text);   border-color: var(--family-border);   font-style: normal; font-weight: 500; }
 
   /* ══════════ WEEK VIEWS ══════════ */
   #week-list-view { display: none; flex-direction: column; gap: 6px; }
@@ -221,6 +230,7 @@
   .week-day-header.status-travel   { background: var(--travel-bg);   border-left: 3px solid var(--travel-border); }
   .week-day-header.status-ooo      { background: var(--ooo-bg);      border-left: 3px solid var(--ooo-border); }
   .week-day-header.status-vacation { background: var(--vacation-bg); border-left: 3px solid var(--vacation-border); }
+  .week-day-header.status-family   { background: var(--family-bg);   border-left: 3px solid var(--family-border); }
 
   .wdh-date { font-family: 'DM Serif Display', serif; font-size: 22px; line-height: 1; color: var(--text-muted); min-width: 28px; }
   .week-day-header.is-today .wdh-date { color: var(--travel-text); }
@@ -272,6 +282,7 @@
   .modal-tag-btn.active.t-travel   { background: var(--travel-bg);   color: var(--travel-text);   border-color: var(--travel-border); }
   .modal-tag-btn.active.t-ooo      { background: var(--ooo-bg);      color: var(--ooo-text);      border-color: var(--ooo-border); }
   .modal-tag-btn.active.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
+  .modal-tag-btn.active.t-family   { background: var(--family-bg);   color: var(--family-text);   border-color: var(--family-border); }
 
   /* Event cards in modal */
   .modal-events-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
@@ -349,6 +360,7 @@
   <div class="legend-item"><div class="legend-pip pip-travel"></div> Travel</div>
   <div class="legend-item"><div class="legend-pip pip-ooo"></div> Out of office</div>
   <div class="legend-item"><div class="legend-pip pip-vacation"></div> Vacation</div>
+  <div class="legend-item"><div class="legend-pip pip-family"></div> Family</div>
   <div class="legend-item"><div class="legend-pip pip-weekend"></div> Weekend</div>
 </div>
 
@@ -372,6 +384,7 @@
       <button class="modal-tag-btn t-travel"   id="mtag-travel"   onclick="toggleModalTag('travel')">Travel</button>
       <button class="modal-tag-btn t-ooo"      id="mtag-ooo"      onclick="toggleModalTag('ooo')">Out of office</button>
       <button class="modal-tag-btn t-vacation" id="mtag-vacation" onclick="toggleModalTag('vacation')">Vacation</button>
+      <button class="modal-tag-btn t-family"   id="mtag-family"   onclick="toggleModalTag('family')">Family</button>
     </div>
 
     <div class="modal-section-label">Events</div>
@@ -388,8 +401,8 @@
 const DAYS        = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const MONTHS      = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTHS_SHORT= ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const STATUSES    = ['travel','ooo','vacation'];
-const STATUS_LABELS = { travel: 'Travel', ooo: 'OOO', vacation: 'Vacation' };
+const STATUSES    = ['travel','ooo','vacation','family'];
+const STATUS_LABELS = { travel: 'Travel', ooo: 'OOO', vacation: 'Vacation', family: 'Family' };
 
 const today = new Date();
 today.setHours(0,0,0,0);
