@@ -38,8 +38,9 @@ module.exports = async function handler(req, res) {
   // Authorization: Bearer <secret>.
   const secret = process.env.FP_API_SECRET;
   if (secret) {
-    const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    if (auth !== secret) {
+    const authHeader = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const authQuery  = (req.query && req.query.secret) || '';
+    if (authHeader !== secret && authQuery !== secret) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
   }
