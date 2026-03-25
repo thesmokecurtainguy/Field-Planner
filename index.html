@@ -593,11 +593,28 @@ window.addEventListener('beforeunload', () => {
     const remote = await r.json();
     const localHad    = Object.keys(DATA).length > 0;
     const remoteEmpty = Object.keys(remote).length === 0;
-    // Remote is the source of truth; local keys not in remote are preserved
-    Object.assign(DATA, remote);
+
+    // Merge remote into local with data-preservation rules:
+    //   • Remote wins for notes, status, and location keys (scalar values)
+    //   • For event arrays ('-events', '__recurring__'): if remote is empty
+    //     but local has real data, keep local AND push it back up to Redis
+    //     so both devices end up with the full dataset.
+    let localHasUnsynced = false;
+    for (const [k, v] of Object.entries(remote)) {
+      const isArrayKey = k.endsWith('-events') || k === '__recurring__';
+      if (isArrayKey && (!v || v === '[]') && DATA[k] && DATA[k] !== '[]') {
+        // Remote lost this event data — keep local copy and flag for re-push
+        localHasUnsynced = true;
+      } else {
+        DATA[k] = v;
+      }
+    }
+
     saveLocal(DATA);
     render();
-    if (localHad && remoteEmpty) await pushToRemote();
+
+    // Push up any local data that remote was missing
+    if ((localHad && remoteEmpty) || localHasUnsynced) await pushToRemote();
   } catch(e) { console.warn('[FP] Remote fetch failed, using local cache:', e); }
 })();
 
