@@ -24,7 +24,7 @@
     --vpres-bg: #FDEEF4;   --vpres-border: #D6478A;   --vpres-text: #8C1A50;
     --today-bg: #EBF3FC; --today-border: #378ADD;
     --weekend-bg: #F5F3EE;
-    --past-opacity: 0.42;
+    --past-opacity: 0.38;
     --radius: 10px;
     --radius-sm: 6px;
   }
@@ -72,8 +72,13 @@
 
   main { padding: 0 2rem 3rem; }
 
-  /* ── PAST ── */
-  .day-row.past, .grid-cell.past, .week-day-block.past { opacity: var(--past-opacity); }
+  /* ── PAST ── past dates stay fully readable; only the day number is dimmed */
+  .day-row.past .day-label,
+  .day-row.past .daynum          { opacity: 0.45; }
+  .grid-cell.past .cell-num      { opacity: 0.45; }
+  .week-day-block.past .wdh-date { opacity: 0.45; }
+  .dv-hero.is-past .dv-dayname,
+  .dv-hero.is-past .dv-date      { opacity: 0.55; }
 
   /* ══════════ LIST VIEW ══════════ */
   #list-view { display: none; flex-direction: column; gap: 6px; }
