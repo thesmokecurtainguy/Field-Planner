@@ -21,7 +21,8 @@
     --ooo-bg: #FAECE7;   --ooo-border: #D85A30;   --ooo-text: #993C1D;
     --vacation-bg: #E3F5EE; --vacation-border: #1D9E75; --vacation-text: #0F6E56;
     --family-bg: #F3EEFB;  --family-border: #9B59D0;  --family-text: #5B2D8E;
-    --vpres-bg: #FDEEF4;   --vpres-border: #D6478A;   --vpres-text: #8C1A50;
+    --vpres-bg: #FEF0E6;   --vpres-border: #F26D00;   --vpres-text: #9A3900;
+    --mis-bg:   #FCE8F3;   --mis-border:   #E8157A;   --mis-text:   #96094F;
     --today-bg: #EBF3FC; --today-border: #378ADD;
     --weekend-bg: #F5F3EE;
     --past-opacity: 0.38;
@@ -68,6 +69,7 @@
   .pip-vacation { background: var(--vacation-border); }
   .pip-family   { background: var(--family-border); }
   .pip-vpres    { background: var(--vpres-border); }
+  .pip-mis      { background: var(--mis-border); }
   .pip-weekend  { background: var(--text-faint); }
 
   main { padding: 0 2rem 3rem; }
@@ -95,6 +97,7 @@
   .loc-col.loc-vacation { background: var(--vacation-bg); border-right-color: var(--vacation-border); }
   .loc-col.loc-family   { background: var(--family-bg);   border-right-color: var(--family-border); }
   .loc-col.loc-vpres    { background: var(--vpres-bg);    border-right-color: var(--vpres-border); }
+  .loc-col.loc-mis      { background: var(--mis-bg);      border-right-color: var(--mis-border); }
 
   .loc-pin { font-size: 11px; color: var(--text-faint); margin-right: 5px; margin-top: 1px; flex-shrink: 0; }
   .loc-col.loc-travel   .loc-pin { color: var(--travel-text); }
@@ -102,6 +105,7 @@
   .loc-col.loc-vacation .loc-pin { color: var(--vacation-text); }
   .loc-col.loc-family   .loc-pin { color: var(--family-text); }
   .loc-col.loc-vpres    .loc-pin { color: var(--vpres-text); }
+  .loc-col.loc-mis      .loc-pin { color: var(--mis-text); }
 
   .loc-input {
     background: none; border: none; outline: none;
@@ -125,6 +129,7 @@
   .day-row.status-vacation { background: var(--vacation-bg) !important; border-left: 3px solid var(--vacation-border); }
   .day-row.status-family   { background: var(--family-bg)   !important; border-left: 3px solid var(--family-border); }
   .day-row.status-vpres    { background: var(--vpres-bg)    !important; border-left: 3px solid var(--vpres-border); }
+  .day-row.status-mis      { background: var(--mis-bg)      !important; border-left: 3px solid var(--mis-border); }
 
   .day-label { font-size: 12px; font-weight: 500; color: var(--text-muted); white-space: nowrap; display: flex; align-items: baseline; gap: 4px; padding-top: 5px; }
   .day-label .daynum { font-size: 11px; font-weight: 300; color: var(--text-faint); }
@@ -169,6 +174,7 @@
   .tag-btn.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
   .tag-btn.t-family   { background: var(--family-bg);   color: var(--family-text);   border-color: var(--family-border); }
   .tag-btn.t-vpres    { background: var(--vpres-bg);    color: var(--vpres-text);    border-color: var(--vpres-border); }
+  .tag-btn.t-mis      { background: var(--mis-bg);      color: var(--mis-text);      border-color: var(--mis-border); }
 
   /* ══════════ GRID VIEW ══════════ */
   #grid-view { display: block; }
@@ -190,6 +196,7 @@
   .grid-cell.status-vacation { background: var(--vacation-bg) !important; border-color: var(--vacation-border); }
   .grid-cell.status-family   { background: var(--family-bg)   !important; border-color: var(--family-border); }
   .grid-cell.status-vpres    { background: var(--vpres-bg)    !important; border-color: var(--vpres-border); }
+  .grid-cell.status-mis      { background: var(--mis-bg)      !important; border-color: var(--mis-border); }
 
   .cell-num { font-size: 13px; font-weight: 500; color: var(--text-muted); line-height: 1; }
   .grid-cell.is-today .cell-num { color: var(--travel-text); }
@@ -211,6 +218,7 @@
   .cell-tag.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); }
   .cell-tag.t-family   { background: var(--family-bg);   color: var(--family-text); }
   .cell-tag.t-vpres    { background: var(--vpres-bg);    color: var(--vpres-text); }
+  .cell-tag.t-mis      { background: var(--mis-bg);      color: var(--mis-text); }
 
   .grid-loc-row  { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
   .grid-loc-cell {
@@ -223,6 +231,7 @@
   .grid-loc-cell.loc-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); font-style: normal; font-weight: 500; }
   .grid-loc-cell.loc-family   { background: var(--family-bg);   color: var(--family-text);   border-color: var(--family-border);   font-style: normal; font-weight: 500; }
   .grid-loc-cell.loc-vpres    { background: var(--vpres-bg);    color: var(--vpres-text);    border-color: var(--vpres-border);    font-style: normal; font-weight: 500; }
+  .grid-loc-cell.loc-mis      { background: var(--mis-bg);      color: var(--mis-text);      border-color: var(--mis-border);      font-style: normal; font-weight: 500; }
 
   /* ══════════ WEEK VIEWS ══════════ */
   #week-list-view { display: none; flex-direction: column; gap: 6px; }
@@ -240,6 +249,7 @@
   .week-day-header.status-vacation { background: var(--vacation-bg); border-left: 3px solid var(--vacation-border); }
   .week-day-header.status-family   { background: var(--family-bg);   border-left: 3px solid var(--family-border); }
   .week-day-header.status-vpres    { background: var(--vpres-bg);    border-left: 3px solid var(--vpres-border); }
+  .week-day-header.status-mis      { background: var(--mis-bg);      border-left: 3px solid var(--mis-border); }
 
   .wdh-date  { font-family: 'DM Serif Display', serif; font-size: 22px; line-height: 1; color: var(--text-muted); min-width: 28px; }
   .wdh-label { font-size: 13px; font-weight: 500; color: var(--text-muted); }
@@ -282,6 +292,7 @@
   .dv-tag-btn.active.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
   .dv-tag-btn.active.t-family   { background: var(--family-bg);   color: var(--family-text);   border-color: var(--family-border); }
   .dv-tag-btn.active.t-vpres    { background: var(--vpres-bg);    color: var(--vpres-text);    border-color: var(--vpres-border); }
+  .dv-tag-btn.active.t-mis      { background: var(--mis-bg);      color: var(--mis-text);      border-color: var(--mis-border); }
 
   .dv-field-label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 5px; }
   .dv-field { margin-bottom: 1rem; }
@@ -354,6 +365,7 @@
   .modal-tag-btn.active.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
   .modal-tag-btn.active.t-family   { background: var(--family-bg);   color: var(--family-text);   border-color: var(--family-border); }
   .modal-tag-btn.active.t-vpres    { background: var(--vpres-bg);    color: var(--vpres-text);    border-color: var(--vpres-border); }
+  .modal-tag-btn.active.t-mis      { background: var(--mis-bg);      color: var(--mis-text);      border-color: var(--mis-border); }
 
   /* Event cards in modal */
   .modal-events-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
@@ -475,6 +487,7 @@
   <div class="legend-item"><div class="legend-pip pip-vacation"></div> Vacation</div>
   <div class="legend-item"><div class="legend-pip pip-family"></div> Family</div>
   <div class="legend-item"><div class="legend-pip pip-vpres"></div> Virtual Pres.</div>
+  <div class="legend-item"><div class="legend-pip pip-mis"></div> MIS</div>
   <div class="legend-item"><div class="legend-pip pip-weekend"></div> Weekend</div>
 </div>
 
@@ -501,6 +514,7 @@
       <button class="modal-tag-btn t-vacation" id="mtag-vacation" onclick="toggleModalTag('vacation')">Vacation</button>
       <button class="modal-tag-btn t-family"   id="mtag-family"   onclick="toggleModalTag('family')">Family</button>
       <button class="modal-tag-btn t-vpres"    id="mtag-vpres"    onclick="toggleModalTag('vpres')">Virtual Pres.</button>
+      <button class="modal-tag-btn t-mis"      id="mtag-mis"      onclick="toggleModalTag('mis')">MIS</button>
     </div>
 
     <div class="modal-section-label">Events</div>
@@ -518,8 +532,8 @@ const DAYS         = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAYS_SHORT   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 const MONTHS       = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const STATUSES     = ['travel','ooo','vacation','family','vpres'];
-const STATUS_LABELS= { travel:'Travel', ooo:'OOO', vacation:'Vacation', family:'Family', vpres:'Virtual' };
+const STATUSES     = ['travel','ooo','vacation','family','vpres','mis'];
+const STATUS_LABELS= { travel:'Travel', ooo:'OOO', vacation:'Vacation', family:'Family', vpres:'Virtual', mis:'MIS' };
 
 const today = new Date();
 today.setHours(0,0,0,0);
