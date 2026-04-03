@@ -418,6 +418,17 @@
   }
   .day-check-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
 
+  .month-day-picker { grid-column: span 2; display: flex; flex-direction: column; gap: 6px; }
+  .month-day-picker label { font-size: 10px; color: var(--text-faint); font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+  .month-day-btns { display: flex; gap: 3px; flex-wrap: wrap; }
+  .month-day-btn {
+    font-size: 11px; font-weight: 500; padding: 3px 0; border-radius: 4px; min-width: 28px; text-align: center;
+    border: 1px solid var(--border-strong); background: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; color: var(--text-muted); transition: all 0.15s;
+  }
+  .month-day-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
+  .month-day-btn.last-day { min-width: 40px; }
+
   .add-event-btn {
     width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
     background: none; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
@@ -718,7 +729,13 @@ function recurringApplies(ev, date) {
       const diffWeeks = Math.round((getWeekStart(d) - getWeekStart(start)) / (7*24*60*60*1000));
       return diffWeeks % 2 === 0;
     }
-    case 'monthly': return d.getDate() === start.getDate();
+    case 'monthly': {
+      const lastOfMonth = new Date(d.getFullYear(), d.getMonth()+1, 0).getDate();
+      if (ev.monthDays && ev.monthDays.length) {
+        return ev.monthDays.some(md => md === -1 ? d.getDate() === lastOfMonth : d.getDate() === md);
+      }
+      return d.getDate() === start.getDate(); // legacy: use startDate day
+    }
     default: return false;
   }
 }
@@ -736,7 +753,15 @@ function recurDescription(ev) {
     case 'daily':    return 'Repeats daily';
     case 'weekly':   return `Repeats weekly on ${(ev.days||[]).map(d=>DAYS[d]).join(', ') || '—'}`;
     case 'biweekly': return `Repeats every other week on ${(ev.days||[]).map(d=>DAYS[d]).join(', ') || '—'}`;
-    case 'monthly':  {
+    case 'monthly': {
+      if (ev.monthDays && ev.monthDays.length) {
+        const labels = ev.monthDays.map(d => {
+          if (d === -1) return 'last day';
+          const s = ['th','st','nd','rd']; const v = d%100;
+          return `${d}${s[(v-20)%10]||s[v]||s[0]}`;
+        });
+        return `Repeats monthly on the ${labels.join(' & ')}`;
+      }
       if (!ev.startDate) return 'Repeats monthly';
       const n = new Date(ev.startDate).getDate();
       const s = ['th','st','nd','rd']; const v = n%100;
@@ -1122,10 +1147,17 @@ function renderModalEvents() {
     card.className = 'modal-event-card' + (ev._recurring ? ' is-recurring' : '');
 
     const pat = ev.pattern || 'weekly';
-    const showDayPicker = ['weekly','biweekly'].includes(pat);
+    const showDayPicker   = ['weekly','biweekly'].includes(pat);
+    const showMonthPicker = pat === 'monthly';
+    const activeMDays     = ev.monthDays || (ev.startDate ? [new Date(ev.startDate).getDate()] : [modalDate ? modalDate.getDate() : 1]);
     const dayBtns = DAYS_SHORT.map((d,i) =>
       `<button class="day-check-btn${(ev.days||[]).includes(i)?' active':''}" data-idx="${idx}" data-dow="${i}">${d}</button>`
     ).join('');
+    const monthDayBtns =
+      Array.from({length:31},(_,i)=>i+1).map(d =>
+        `<button class="month-day-btn${activeMDays.includes(d)?' active':''}" data-idx="${idx}" data-md="${d}">${d}</button>`
+      ).join('') +
+      `<button class="month-day-btn last-day${activeMDays.includes(-1)?' active':''}" data-idx="${idx}" data-md="-1">Last</button>`;
 
     card.innerHTML = `
       <div class="event-card-header">
@@ -1183,6 +1215,10 @@ function renderModalEvents() {
             <label>On These Days</label>
             <div class="day-checkboxes">${dayBtns}</div>
           </div>
+          <div class="month-day-picker" id="recur-month-days-${idx}" style="display:${showMonthPicker?'flex':'none'}; flex-direction:column; gap:6px">
+            <label>On These Dates Each Month</label>
+            <div class="month-day-btns">${monthDayBtns}</div>
+          </div>
           <div class="event-field">
             <label>Start Date</label>
             <input type="date" data-idx="${idx}" data-field="startDate" value="${ev.startDate||dateStr(modalDate)}" />
@@ -1228,8 +1264,19 @@ function renderModalEvents() {
       patSelect.addEventListener('change', e => {
         const i = parseInt(e.target.dataset.idx);
         modalEvents[i].pattern = e.target.value;
-        const dayPicker = document.getElementById(`recur-days-${i}`);
-        if (dayPicker) dayPicker.style.display = ['weekly','biweekly'].includes(e.target.value) ? 'flex' : 'none';
+        const dayPicker      = document.getElementById(`recur-days-${i}`);
+        const monthDayPicker = document.getElementById(`recur-month-days-${i}`);
+        if (dayPicker)      dayPicker.style.display      = ['weekly','biweekly'].includes(e.target.value) ? 'flex' : 'none';
+        if (monthDayPicker) monthDayPicker.style.display = e.target.value === 'monthly' ? 'flex' : 'none';
+        // Initialize monthDays when switching to monthly for the first time
+        if (e.target.value === 'monthly' && (!modalEvents[i].monthDays || !modalEvents[i].monthDays.length)) {
+          modalEvents[i].monthDays = [modalDate ? modalDate.getDate() : 1];
+          if (monthDayPicker) {
+            monthDayPicker.querySelectorAll('.month-day-btn').forEach(b => {
+              b.classList.toggle('active', modalEvents[i].monthDays.includes(parseInt(b.dataset.md)));
+            });
+          }
+        }
       });
     }
 
@@ -1243,6 +1290,19 @@ function renderModalEvents() {
         if (pos >= 0) days.splice(pos, 1); else days.push(dow);
         days.sort((a,b)=>a-b);
         e.target.classList.toggle('active', days.includes(dow));
+      });
+    });
+
+    // Month-day buttons
+    card.querySelectorAll('.month-day-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const i  = parseInt(e.target.dataset.idx);
+        const md = parseInt(e.target.dataset.md);
+        const mdays = modalEvents[i].monthDays = [...(modalEvents[i].monthDays||[])];
+        const pos = mdays.indexOf(md);
+        if (pos >= 0) mdays.splice(pos, 1); else mdays.push(md);
+        mdays.sort((a,b)=>a-b);
+        e.target.classList.toggle('active', mdays.includes(md));
       });
     });
 
