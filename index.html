@@ -746,6 +746,10 @@ function dk(y, m, d)  { return `${y}-${String(m).padStart(2,'0')}-${String(d).pa
 function dkFromDate(date) { return dk(date.getFullYear(), date.getMonth(), date.getDate()); }
 function lk(y, m, w)  { return `loc-${y}-${m}-${w}`; }
 function dateStr(date) { return dkFromDate(date); }
+// Proper ISO date (YYYY-MM-DD with 1-indexed month) for use in <input type="date">
+function isoDateStr(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
 
 function isPast(date)  { const d = new Date(date); d.setHours(0,0,0,0); return d < today; }
 function isToday(date) { const d = new Date(date); d.setHours(0,0,0,0); return d.getTime() === today.getTime(); }
@@ -1456,7 +1460,7 @@ function renderModalFlights() {
         <input type="text" class="mfc-input" placeholder="Flight # (e.g. AA123)"
           data-flidx="${idx}" data-field="flightNum" value="${esc(fl.flightNum||'')}">
         <input type="date" class="mfc-input" data-flidx="${idx}" data-field="lookupDate"
-          value="${fl.lookupDate||dateStr(modalDate)}">
+          value="${fl.lookupDate||isoDateStr(modalDate)}">
         <button class="mfc-lookup-btn" data-flidx="${idx}">Look Up</button>
       </div>
       <div id="mfc-status-${idx}" class="mfc-status"></div>
@@ -1524,7 +1528,7 @@ function addModalFlight() {
     originCode: '', originAirport: '',
     destCode: '', destAirport: '',
     departureTime: '', arrivalTime: '',
-    lookupDate: modalDate ? dateStr(modalDate) : '',
+    lookupDate: modalDate ? isoDateStr(modalDate) : '',
   });
   renderModalFlights();
   setTimeout(() => {
