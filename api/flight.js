@@ -60,15 +60,25 @@ export default async function handler(req, res) {
     }
 
     const flights = list.map(f => ({
-      flightNum:     f.number         || flightNum,
-      airline:       f.airline?.name  || '',
+      flightNum:     f.number        || flightNum,
+      airline:       f.airline?.name || '',
       originCode:    f.departure?.airport?.iata || '',
       originAirport: f.departure?.airport?.municipalityName || f.departure?.airport?.name || '',
       destCode:      f.arrival?.airport?.iata || '',
       destAirport:   f.arrival?.airport?.municipalityName || f.arrival?.airport?.name || '',
-      departureTime: toHHMM(f.departure?.scheduledTimeLocal || f.departure?.scheduledTimeUtc),
-      arrivalTime:   toHHMM(f.arrival?.scheduledTimeLocal   || f.arrival?.scheduledTimeUtc),
-      status:        f.status || 'scheduled',
+      departureTime: toHHMM(
+        f.departure?.scheduledTime?.local ||
+        f.departure?.scheduledTime?.utc   ||
+        f.departure?.scheduledTimeLocal   ||
+        f.departure?.scheduledTimeUtc
+      ),
+      arrivalTime: toHHMM(
+        f.arrival?.scheduledTime?.local ||
+        f.arrival?.scheduledTime?.utc   ||
+        f.arrival?.scheduledTimeLocal   ||
+        f.arrival?.scheduledTimeUtc
+      ),
+      status: f.status || 'scheduled',
     }));
 
     res.json({ flights });
