@@ -429,6 +429,63 @@
   .month-day-btn.active { background: var(--text); color: #fff; border-color: var(--text); }
   .month-day-btn.last-day { min-width: 40px; }
 
+  /* ── FLIGHT CHIPS ──────────────────────────────────────────────────────── */
+  .flight-chip {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px;
+    background: #e8f0fe; color: #1a56db; border: 1px solid #b4c6fa;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 100%; cursor: pointer;
+  }
+  .cell-flight-chip {
+    font-size: 10px; font-weight: 600; padding: 1px 5px; border-radius: 3px;
+    background: #e8f0fe; color: #1a56db; border: 1px solid #b4c6fa;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+  }
+  .dv-flight-card {
+    background: #edf3ff; border: 1px solid #b4c6fa; border-radius: 8px;
+    padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+  }
+  .dv-fl-title  { font-weight: 700; color: #1a56db; font-size: 14px; }
+  .dv-fl-route  { font-size: 12px; color: var(--text-muted); }
+  .dv-fl-times  { font-size: 12px; color: var(--text); }
+
+  /* ── MODAL FLIGHT CARDS ────────────────────────────────────────────────── */
+  .modal-flight-card {
+    background: #f0f5ff; border: 1px solid #c7d9ff; border-radius: 8px;
+    padding: 12px; margin-bottom: 10px;
+  }
+  .mfc-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .mfc-icon   { font-size: 16px; }
+  .mfc-label  { flex: 1; font-size: 12px; font-weight: 700; color: #1a56db; }
+  .mfc-delete { background: none; border: none; cursor: pointer; color: var(--text-faint); font-size: 14px; padding: 0; line-height: 1; }
+  .mfc-delete:hover { color: #e53e3e; }
+
+  .mfc-lookup-row { display: flex; gap: 6px; margin-bottom: 6px; }
+  .mfc-lookup-row .mfc-input { flex: 1; min-width: 0; }
+  .mfc-lookup-btn {
+    padding: 5px 12px; border-radius: 6px; border: 1px solid #b4c6fa;
+    background: #1a56db; color: #fff; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: 'DM Sans', sans-serif; white-space: nowrap;
+  }
+  .mfc-lookup-btn:disabled { opacity: 0.5; cursor: wait; }
+
+  .mfc-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .mfc-field { display: flex; flex-direction: column; gap: 4px; }
+  .mfc-field.wide { grid-column: span 2; }
+  .mfc-field label { font-size: 10px; color: var(--text-faint); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+  .mfc-input {
+    font-size: 12px; padding: 5px 8px; border-radius: 6px;
+    border: 1px solid var(--border-strong); background: #fff;
+    color: var(--text); font-family: 'DM Sans', sans-serif; width: 100%; box-sizing: border-box;
+  }
+  .mfc-input:focus { outline: none; border-color: #1a56db; }
+  .airport-row { display: flex; gap: 6px; }
+  .airport-code { width: 68px !important; flex: none; }
+  .mfc-status { font-size: 11px; color: var(--text-faint); min-height: 16px; }
+  .mfc-status.error { color: #e53e3e; }
+  .mfc-status.ok    { color: #22863a; }
+
   .add-event-btn {
     width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;
     background: none; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm);
@@ -534,6 +591,10 @@
     <div class="modal-events-list" id="modal-events-list"></div>
     <button class="add-event-btn" onclick="addModalEvent()">+ Add Event</button>
 
+    <div class="modal-section-label" style="margin-top:16px">Flights</div>
+    <div class="modal-flights-list" id="modal-flights-list"></div>
+    <button class="add-event-btn" onclick="addModalFlight()">✈ Add Flight</button>
+
     <div class="modal-footer">
       <button class="modal-save" onclick="saveModal()">Done</button>
     </div>
@@ -558,6 +619,7 @@ let currentView  = 'grid';
 let modalDk      = null;
 let modalDate    = null;
 let modalEvents  = [];
+let modalFlights = [];
 let modalRecurringOriginalIds = [];
 
 function getWeekStart(date) {
@@ -650,7 +712,7 @@ window.addEventListener('beforeunload', () => {
     // keep local and push it back up to repair Redis.
     let needsPush = remoteEmpty && localHad;
     for (const [k, v] of Object.entries(remote)) {
-      const isArray = k.endsWith('-events') || k === '__recurring__';
+      const isArray = k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__';
       if (isArray && (!v || v === '[]') && DATA[k] && DATA[k] !== '[]') {
         needsPush = true; // local has events that remote is missing
       } else {
@@ -714,6 +776,9 @@ function saveEvents(key, evs) { DATA[key+'-events'] = JSON.stringify(evs); saveD
 
 function getRecurring()     { try { return JSON.parse(DATA['__recurring__'] || '[]'); } catch(e) { return []; } }
 function saveRecurring(arr) { DATA['__recurring__'] = JSON.stringify(arr); saveData(DATA); }
+
+function getFlights(key) { try { return JSON.parse(DATA[key+'-flights'] || '[]'); } catch(e) { return []; } }
+function saveFlights(key, arr) { DATA[key+'-flights'] = JSON.stringify(arr); saveData(DATA); }
 
 function recurringApplies(ev, date) {
   const d = new Date(date); d.setHours(0,0,0,0);
@@ -818,6 +883,15 @@ function cellChipHTML(ev) {
   const recurCls = ev._recurring ? ' is-recurring' : '';
   return `<div class="cell-event-chip${recurCls}">${ev._recurring?'↻ ':''}${ev.title||'Untitled'}${t?`<span class="chip-time">${t}</span>`:''}</div>`;
 }
+function flightChipHTML(fl, key) {
+  const route = fl.originCode && fl.destCode ? ` ${fl.originCode}→${fl.destCode}` : '';
+  const time  = fl.departureTime ? ` ${fl.departureTime}` : '';
+  return `<div class="flight-chip" data-key="${key}">✈ ${fl.flightNum||'?'}${route}${time}</div>`;
+}
+function cellFlightChipHTML(fl) {
+  const route = fl.originCode && fl.destCode ? ` ${fl.originCode}→${fl.destCode}` : '';
+  return `<div class="cell-flight-chip">✈ ${fl.flightNum||'?'}${route}</div>`;
+}
 
 // ── LIST VIEW ────────────────────────────────────────────────────────────────
 function renderList() {
@@ -855,13 +929,15 @@ function renderList() {
 
       const tagCls = status ? `tag-btn t-${status}` : 'tag-btn';
       const tagLabel = status ? STATUS_LABELS[status] : 'Tag';
-      const chipsHTML = events.map(ev => chipHTML(ev, key)).join('');
+      const chipsHTML   = events.map(ev => chipHTML(ev, key)).join('');
+      const flights     = getFlights(key);
+      const flChipsHTML = flights.map(fl => flightChipHTML(fl, key)).join('');
 
       row.innerHTML = `
         <div class="day-label">${DAYS[dow]} <span class="daynum">${date.getDate()}</span></div>
         <div class="day-content">
           <input class="day-note" placeholder="—" value="${note.replace(/"/g,'&quot;')}" data-key="${key}" />
-          <div class="event-chips">${chipsHTML}</div>
+          <div class="event-chips">${chipsHTML}${flChipsHTML}</div>
           <button class="add-event-link" data-key="${key}">+ event</button>
         </div>
         <div class="day-row-right">
@@ -872,6 +948,7 @@ function renderList() {
       row.querySelector('.tag-btn').addEventListener('click', e => cycleStatus(e.target.dataset.key));
       row.querySelector('.add-event-link').addEventListener('click', () => openModal(key, date, true));
       row.querySelectorAll('.event-chip').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
+      row.querySelectorAll('.flight-chip').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
       daysCol.appendChild(row);
     });
 
@@ -919,6 +996,7 @@ function renderGrid() {
       const note = DATA[key]||'';
       const events = getEventsForDay(date);
 
+      const flights = getFlights(key);
       const cell = document.createElement('div');
       let cls = 'grid-cell';
       if (dow===0||dow===6) cls += ' weekend';
@@ -930,6 +1008,7 @@ function renderGrid() {
         <div class="cell-num">${date.getDate()}</div>
         ${note ? `<div class="cell-note">${note}</div>` : ''}
         ${events.map(ev => cellChipHTML(ev)).join('')}
+        ${flights.map(fl => cellFlightChipHTML(fl)).join('')}
         ${status ? `<div class="cell-tag t-${status}">${STATUS_LABELS[status]}</div>` : ''}
       `;
       cell.addEventListener('click', () => openModal(key, date));
@@ -971,9 +1050,9 @@ function renderWeekList() {
           <button class="${tagCls}" data-key="${key}">${tagLabel}</button>
         </div>
       </div>
-      <div class="week-day-body">
+        <div class="week-day-body">
         <input class="week-note-input" placeholder="Add a note…" value="${note.replace(/"/g,'&quot;')}" data-key="${key}" />
-        <div class="event-chips">${events.map(ev=>chipHTML(ev,key)).join('')}</div>
+        <div class="event-chips">${events.map(ev=>chipHTML(ev,key)).join('')}${getFlights(key).map(fl=>flightChipHTML(fl,key)).join('')}</div>
         <button class="add-event-link" data-key="${key}">+ add event</button>
       </div>
     `;
@@ -981,6 +1060,7 @@ function renderWeekList() {
     block.querySelector('.week-note-input').addEventListener('input', e => { DATA[e.target.dataset.key] = e.target.value; saveData(DATA); });
     block.querySelector('.add-event-link').addEventListener('click', () => openModal(key, date, true));
     block.querySelectorAll('.event-chip').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
+    block.querySelectorAll('.flight-chip').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
     el.appendChild(block);
   });
 }
@@ -1004,6 +1084,7 @@ function renderWeekGrid() {
     const note = DATA[key]||'';
     const events = getEventsForDay(date);
 
+    const wgFlights = getFlights(key);
     const cell = document.createElement('div');
     let cls = 'grid-cell';
     if (dow===0||dow===6) cls += ' weekend';
@@ -1015,6 +1096,7 @@ function renderWeekGrid() {
       <div class="cell-num">${date.getDate()}</div>
       ${note ? `<div class="cell-note">${note}</div>` : ''}
       ${events.map(ev => cellChipHTML(ev)).join('')}
+      ${wgFlights.map(fl => cellFlightChipHTML(fl)).join('')}
       ${status ? `<div class="cell-tag t-${status}">${STATUS_LABELS[status]}</div>` : ''}
     `;
     cell.addEventListener('click', () => openModal(key, date));
@@ -1106,6 +1188,31 @@ function renderDay() {
   }
 
   el.appendChild(evSection);
+
+  // Flights section in day view
+  const dvFlights = getFlights(key);
+  if (dvFlights.length) {
+    const flSection = document.createElement('div'); flSection.className = 'dv-events-section';
+    const flHeader  = document.createElement('div'); flHeader.className = 'dv-events-header';
+    flHeader.innerHTML = `<div class="dv-events-title">✈ Flights</div>`;
+    flSection.appendChild(flHeader);
+    dvFlights.forEach(fl => {
+      const card = document.createElement('div'); card.className = 'dv-flight-card';
+      const route = fl.originCode && fl.destCode ? `${fl.originCode} → ${fl.destCode}` : '';
+      const airportRoute = [fl.originAirport, fl.destAirport].filter(Boolean).join(' → ');
+      const times = fl.departureTime && fl.arrivalTime
+        ? `${fl.departureTime} – ${fl.arrivalTime}`
+        : fl.departureTime || fl.arrivalTime || '';
+      card.innerHTML = `
+        <div class="dv-fl-title">✈ ${fl.flightNum||'Flight'}${fl.airline ? ` · ${fl.airline}` : ''}</div>
+        ${route      ? `<div class="dv-fl-route">${route}${airportRoute ? ` (${airportRoute})` : ''}</div>` : ''}
+        ${times      ? `<div class="dv-fl-times">${times}</div>` : ''}
+      `;
+      card.addEventListener('click', () => openModal(key, date));
+      flSection.appendChild(card);
+    });
+    el.appendChild(flSection);
+  }
 }
 
 // ── MODAL ────────────────────────────────────────────────────────────────────
@@ -1128,7 +1235,9 @@ function openModal(key, date, addEventImmediate = false) {
     document.getElementById('mtag-'+s).className = 'modal-tag-btn t-'+s+(status===s?' active':'');
   });
 
+  modalFlights = getFlights(key).map(f => ({...f}));
   renderModalEvents();
+  renderModalFlights();
   document.getElementById('modal-overlay').classList.add('open');
 
   if (addEventImmediate) {
@@ -1329,6 +1438,148 @@ function addModalEvent() {
   }, 50);
 }
 
+// ── FLIGHT MODAL ─────────────────────────────────────────────────────────────
+function renderModalFlights() {
+  const container = document.getElementById('modal-flights-list');
+  container.innerHTML = '';
+
+  modalFlights.forEach((fl, idx) => {
+    const card = document.createElement('div');
+    card.className = 'modal-flight-card';
+    card.innerHTML = `
+      <div class="mfc-header">
+        <span class="mfc-icon">✈</span>
+        <span class="mfc-label">Flight ${idx + 1}</span>
+        <button class="mfc-delete" data-flidx="${idx}" title="Remove flight">✕</button>
+      </div>
+      <div class="mfc-lookup-row">
+        <input type="text" class="mfc-input" placeholder="Flight # (e.g. AA123)"
+          data-flidx="${idx}" data-field="flightNum" value="${esc(fl.flightNum||'')}">
+        <input type="date" class="mfc-input" data-flidx="${idx}" data-field="lookupDate"
+          value="${fl.lookupDate||dateStr(modalDate)}">
+        <button class="mfc-lookup-btn" data-flidx="${idx}">Look Up</button>
+      </div>
+      <div id="mfc-status-${idx}" class="mfc-status"></div>
+      <div class="mfc-detail-grid">
+        <div class="mfc-field wide">
+          <label>Airline</label>
+          <input class="mfc-input" data-flidx="${idx}" data-field="airline"
+            placeholder="e.g. American Airlines" value="${esc(fl.airline||'')}">
+        </div>
+        <div class="mfc-field wide">
+          <label>From</label>
+          <div class="airport-row">
+            <input class="mfc-input airport-code" data-flidx="${idx}" data-field="originCode"
+              placeholder="LAX" value="${esc(fl.originCode||'')}">
+            <input class="mfc-input" data-flidx="${idx}" data-field="originAirport"
+              placeholder="City / Airport" value="${esc(fl.originAirport||'')}">
+          </div>
+        </div>
+        <div class="mfc-field wide">
+          <label>To</label>
+          <div class="airport-row">
+            <input class="mfc-input airport-code" data-flidx="${idx}" data-field="destCode"
+              placeholder="DFW" value="${esc(fl.destCode||'')}">
+            <input class="mfc-input" data-flidx="${idx}" data-field="destAirport"
+              placeholder="City / Airport" value="${esc(fl.destAirport||'')}">
+          </div>
+        </div>
+        <div class="mfc-field">
+          <label>Departure</label>
+          <input type="time" class="mfc-input" data-flidx="${idx}" data-field="departureTime"
+            value="${fl.departureTime||''}">
+        </div>
+        <div class="mfc-field">
+          <label>Arrival</label>
+          <input type="time" class="mfc-input" data-flidx="${idx}" data-field="arrivalTime"
+            value="${fl.arrivalTime||''}">
+        </div>
+      </div>
+    `;
+
+    card.querySelector('.mfc-delete').addEventListener('click', e => {
+      modalFlights.splice(parseInt(e.target.dataset.flidx), 1);
+      renderModalFlights();
+    });
+
+    card.querySelectorAll('.mfc-input[data-field]').forEach(inp => {
+      inp.addEventListener('input', e => {
+        const i = parseInt(e.target.dataset.flidx);
+        if (modalFlights[i]) modalFlights[i][e.target.dataset.field] = e.target.value;
+      });
+    });
+
+    card.querySelector('.mfc-lookup-btn').addEventListener('click', e =>
+      lookupFlight(parseInt(e.target.dataset.flidx))
+    );
+
+    container.appendChild(card);
+  });
+}
+
+function addModalFlight() {
+  modalFlights.push({
+    id: Date.now().toString(),
+    flightNum: '', airline: '',
+    originCode: '', originAirport: '',
+    destCode: '', destAirport: '',
+    departureTime: '', arrivalTime: '',
+    lookupDate: modalDate ? dateStr(modalDate) : '',
+  });
+  renderModalFlights();
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.modal-flight-card');
+    if (!cards.length) return;
+    const last = cards[cards.length - 1];
+    last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const inp = last.querySelector('.mfc-input[data-field="flightNum"]');
+    if (inp) inp.focus();
+  }, 50);
+}
+
+async function lookupFlight(idx) {
+  const fl = modalFlights[idx];
+  if (!fl) return;
+  const num  = (fl.flightNum || '').trim();
+  const date = fl.lookupDate || dateStr(modalDate);
+  if (!num) {
+    const s = document.getElementById(`mfc-status-${idx}`);
+    if (s) { s.textContent = 'Enter a flight number first.'; s.className = 'mfc-status error'; }
+    return;
+  }
+
+  const statusEl = document.getElementById(`mfc-status-${idx}`);
+  const btn      = document.querySelector(`.mfc-lookup-btn[data-flidx="${idx}"]`);
+  if (statusEl) { statusEl.textContent = 'Looking up…'; statusEl.className = 'mfc-status'; }
+  if (btn)      { btn.disabled = true; }
+
+  try {
+    const r = await fetch(`/api/flight?num=${encodeURIComponent(num)}&date=${date}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    if (!data.flights?.length) throw new Error('No flights found for that number and date.');
+
+    const f = data.flights[0];
+    Object.assign(modalFlights[idx], {
+      airline:       f.airline       || fl.airline,
+      originCode:    f.originCode    || fl.originCode,
+      originAirport: f.originAirport || fl.originAirport,
+      destCode:      f.destCode      || fl.destCode,
+      destAirport:   f.destAirport   || fl.destAirport,
+      departureTime: f.departureTime || fl.departureTime,
+      arrivalTime:   f.arrivalTime   || fl.arrivalTime,
+    });
+
+    renderModalFlights();
+    const newS = document.getElementById(`mfc-status-${idx}`);
+    if (newS) { newS.textContent = '✓ Auto-filled from live flight data'; newS.className = 'mfc-status ok'; }
+  } catch (e) {
+    const newS = document.getElementById(`mfc-status-${idx}`);
+    if (newS) { newS.textContent = e.message; newS.className = 'mfc-status error'; }
+    if (btn) btn.disabled = false;
+  }
+}
+
 function toggleModalTag(status) {
   const cur = DATA[modalDk+'-status']||null;
   DATA[modalDk+'-status'] = cur === status ? null : status;
@@ -1364,10 +1615,14 @@ function saveModal() {
     });
 
     saveRecurring(allRecurring);
+
+    // Save flights
+    const flightsToSave = modalFlights.filter(f => f.flightNum || f.airline || f.originCode || f.destCode);
+    saveFlights(modalDk, flightsToSave);
   }
 
   document.getElementById('modal-overlay').classList.remove('open');
-  modalDk = null; modalDate = null; modalEvents = []; modalRecurringOriginalIds = [];
+  modalDk = null; modalDate = null; modalEvents = []; modalFlights = []; modalRecurringOriginalIds = [];
   render();
 }
 
