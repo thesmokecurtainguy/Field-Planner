@@ -44,8 +44,20 @@ export default async function handler(req, res) {
       return res.status(r.status).json({ error: `API returned ${r.status}: ${body.slice(0, 200)}` });
     }
 
-    const data = await r.json();
-    const list = Array.isArray(data) ? data : [data];
+    const raw = await r.text();
+    if (!raw || !raw.trim()) {
+      return res.status(404).json({ error: `No data found for ${flightNum} on ${flightDate}. Check the flight number and date.` });
+    }
+
+    let data;
+    try { data = JSON.parse(raw); } catch(e) {
+      return res.status(502).json({ error: `Unexpected response from flight API: ${raw.slice(0, 100)}` });
+    }
+
+    const list = Array.isArray(data) ? data : (data ? [data] : []);
+    if (!list.length) {
+      return res.status(404).json({ error: `No flights found for ${flightNum} on ${flightDate}. Try a different date or check the flight number.` });
+    }
 
     const flights = list.map(f => ({
       flightNum:     f.number         || flightNum,
