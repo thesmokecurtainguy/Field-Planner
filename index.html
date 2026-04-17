@@ -587,6 +587,40 @@
   }
   .todo-add-btn:hover { opacity: 0.88; }
 
+  .todo-add-wrap { display: flex; flex-direction: column; gap: 6px; position: relative; }
+  .todo-matches {
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    padding: 6px; display: none; flex-direction: column; gap: 2px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .todo-matches.is-open { display: flex; }
+  .todo-matches-label {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-muted); padding: 4px 8px 2px;
+  }
+  .todo-matches-label .todo-matches-warn { color: var(--ooo-text); }
+  .todo-match {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px;
+    font-size: 13px; color: var(--text); cursor: default;
+  }
+  .todo-match:hover { background: var(--surface2); }
+  .todo-match-tag {
+    font-size: 10px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+    padding: 1px 6px; border-radius: 3px; background: var(--surface2); color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .todo-match-tag.is-top { background: var(--travel-bg); color: var(--travel-text); }
+  .todo-match-tag.is-backlog { background: var(--vpres-bg); color: var(--vpres-text); }
+  .todo-match-tag.is-done { background: var(--vacation-bg); color: var(--vacation-text); }
+
+  .todo-toolbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 2px 2px 0; font-size: 12px; color: var(--text-muted);
+  }
+  .todo-toolbar-stats { display: flex; gap: 14px; }
+  .todo-toolbar-stats b { color: var(--text); font-weight: 500; }
+  .todo-toolbar-actions { display: flex; gap: 6px; }
+
   .todo-section { display: flex; flex-direction: column; gap: 6px; }
   .todo-section-header {
     display: flex; align-items: center; justify-content: space-between;
@@ -1971,6 +2005,10 @@ function renderTodo() {
   const top3      = active.slice(0, 3);
   const backlog   = active.slice(3);
 
+  // Default: open the backlog so "see everything" is a one-click glance.
+  if (localStorage.getItem(TODOS_BACKLOG_OPEN) === null) {
+    localStorage.setItem(TODOS_BACKLOG_OPEN, '1');
+  }
   const backlogOpen = localStorage.getItem(TODOS_BACKLOG_OPEN) === '1';
   const doneOpen    = localStorage.getItem(TODOS_DONE_OPEN)    === '1';
 
@@ -2015,18 +2053,88 @@ function renderTodo() {
     <div class="todo-intro">Your top three, in priority order.</div>
   `;
 
+  const toolbarHtml = todos.length ? `
+    <div class="todo-toolbar">
+      <div class="todo-toolbar-stats">
+        <span><b>${active.length}</b> active</span>
+        ${backlog.length ? `<span><b>${backlog.length}</b> in backlog</span>` : ''}
+        ${done.length ? `<span><b>${done.length}</b> done</span>` : ''}
+      </div>
+      <div class="todo-toolbar-actions">
+        <button class="todo-btn" onclick="expandAllTodoSections()">Show all</button>
+        <button class="todo-btn" onclick="collapseAllTodoSections()">Collapse</button>
+      </div>
+    </div>
+  ` : '';
+
   host.innerHTML = `
     ${introHtml}
     <div class="top3">${top3Html}</div>
-    <div class="todo-add">
-      <input id="todo-add-input" class="todo-add-input" type="text"
-             placeholder="Add a task and press Enter…"
-             onkeydown="if(event.key==='Enter'){addTodo();}">
-      <button class="todo-add-btn" onclick="addTodo()">Add</button>
+    <div class="todo-add-wrap">
+      <div class="todo-add">
+        <input id="todo-add-input" class="todo-add-input" type="text"
+               placeholder="Add a task and press Enter…"
+               oninput="updateTodoMatches(this.value)"
+               onkeydown="if(event.key==='Enter'){addTodo();}">
+        <button class="todo-add-btn" onclick="addTodo()">Add</button>
+      </div>
+      <div class="todo-matches" id="todo-matches"></div>
     </div>
+    ${toolbarHtml}
     ${backlogHtml}
     ${doneHtml}
   `;
+}
+
+function updateTodoMatches(query) {
+  const box = document.getElementById('todo-matches');
+  if (!box) return;
+  const q = (query || '').trim().toLowerCase();
+  if (q.length < 2) { box.classList.remove('is-open'); box.innerHTML = ''; return; }
+
+  const todos    = getTodos();
+  const active   = todos.filter(t => !t.done);
+  const done     = todos.filter(t => t.done);
+  const inTop    = new Set(active.slice(0, 3).map(t => t.id));
+
+  const hits = todos
+    .map(t => ({ t, score: t.text.toLowerCase().includes(q) ? 1 : 0 }))
+    .filter(x => x.score > 0)
+    .slice(0, 6);
+
+  if (!hits.length) { box.classList.remove('is-open'); box.innerHTML = ''; return; }
+
+  const exact = hits.some(h => h.t.text.trim().toLowerCase() === q);
+  const label = exact
+    ? `<span class="todo-matches-warn">Exact duplicate already on your list</span>`
+    : `${hits.length} existing task${hits.length === 1 ? '' : 's'} match`;
+
+  box.innerHTML = `
+    <div class="todo-matches-label">${label}</div>
+    ${hits.map(({ t }) => {
+      const where = t.done ? 'is-done' : (inTop.has(t.id) ? 'is-top' : 'is-backlog');
+      const whereLabel = t.done ? 'Done' : (inTop.has(t.id) ? 'Top 3' : 'Backlog');
+      return `
+        <div class="todo-match">
+          <span class="todo-match-tag ${where}">${whereLabel}</span>
+          <span>${escHtml(t.text)}</span>
+        </div>
+      `;
+    }).join('')}
+  `;
+  box.classList.add('is-open');
+}
+
+function expandAllTodoSections() {
+  localStorage.setItem(TODOS_BACKLOG_OPEN, '1');
+  localStorage.setItem(TODOS_DONE_OPEN, '1');
+  renderTodo();
+}
+
+function collapseAllTodoSections() {
+  localStorage.setItem(TODOS_BACKLOG_OPEN, '0');
+  localStorage.setItem(TODOS_DONE_OPEN, '0');
+  renderTodo();
 }
 
 function toggleTodoSection(which) {
