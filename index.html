@@ -512,6 +512,111 @@
   #sync-btn.error    { color: #D85A30; border-color: #D85A30; cursor: pointer; }
   #sync-btn.unsaved  { color: #D85A30; border-color: #D85A30; }
 
+  /* ══════════ TODO VIEW ══════════ */
+  #todo-view { display: none; flex-direction: column; gap: 28px; max-width: 760px; margin: 0 auto; }
+
+  .todo-intro {
+    font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--text-muted);
+    letter-spacing: -0.2px; text-align: center;
+  }
+  .todo-intro .todo-empty-hint { display: block; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 300; color: var(--text-faint); margin-top: 6px; }
+
+  .top3 { display: flex; flex-direction: column; gap: 12px; }
+  .top3-card {
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius);
+    padding: 18px 20px; display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 14px;
+    transition: box-shadow 0.15s, transform 0.15s, opacity 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+  .top3-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+  .top3-card.rank-1 { border-color: var(--travel-border); background: linear-gradient(180deg, var(--travel-bg) 0%, var(--surface) 65%); }
+  .top3-card.rank-2 { border-color: var(--vpres-border); background: linear-gradient(180deg, var(--vpres-bg) 0%, var(--surface) 70%); }
+  .top3-card.rank-3 { border-color: var(--vacation-border); background: linear-gradient(180deg, var(--vacation-bg) 0%, var(--surface) 75%); }
+  .top3-card.placeholder { border-style: dashed; background: var(--surface2); opacity: 0.75; }
+  .top3-card.is-done .todo-text { text-decoration: line-through; color: var(--text-faint); }
+
+  .top3-rank {
+    font-family: 'DM Serif Display', serif; font-size: 42px; line-height: 1;
+    color: var(--text); letter-spacing: -1px; text-align: center;
+  }
+  .top3-card.rank-1 .top3-rank { color: var(--travel-text); }
+  .top3-card.rank-2 .top3-rank { color: var(--vpres-text); }
+  .top3-card.rank-3 .top3-rank { color: var(--vacation-text); }
+  .top3-card.placeholder .top3-rank { color: var(--text-faint); }
+
+  .todo-body { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .todo-check {
+    width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border-strong);
+    background: var(--surface); cursor: pointer; flex-shrink: 0; display: inline-flex;
+    align-items: center; justify-content: center; transition: all 0.15s; padding: 0;
+  }
+  .todo-check:hover { border-color: var(--text); }
+  .todo-check.is-done { background: var(--text); border-color: var(--text); color: #fff; font-size: 12px; }
+
+  .todo-text {
+    flex: 1; font-family: 'DM Sans', sans-serif; font-size: 16px; color: var(--text);
+    background: none; border: none; outline: none; padding: 4px 0; min-width: 0;
+    line-height: 1.4;
+  }
+  .top3-card .todo-text { font-size: 17px; font-weight: 500; }
+  .todo-text::placeholder { color: var(--text-faint); font-weight: 300; font-style: italic; }
+
+  .todo-actions { display: flex; gap: 4px; align-items: center; }
+  .todo-btn {
+    background: none; border: 1px solid transparent; border-radius: var(--radius-sm);
+    padding: 4px 8px; cursor: pointer; color: var(--text-faint); font-size: 13px;
+    font-family: 'DM Sans', sans-serif; transition: all 0.12s; line-height: 1;
+  }
+  .todo-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface); }
+  .todo-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .todo-btn:disabled:hover { color: var(--text-faint); border-color: transparent; background: none; }
+  .todo-btn.danger:hover { color: var(--ooo-text); border-color: var(--ooo-border); }
+
+  .todo-add {
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius);
+    padding: 12px 16px; display: flex; gap: 10px; align-items: center;
+  }
+  .todo-add-input {
+    flex: 1; border: none; outline: none; background: none;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text);
+  }
+  .todo-add-input::placeholder { color: var(--text-faint); }
+  .todo-add-btn {
+    background: var(--text); color: #fff; border: none; border-radius: var(--radius-sm);
+    padding: 7px 16px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+  }
+  .todo-add-btn:hover { opacity: 0.88; }
+
+  .todo-section { display: flex; flex-direction: column; gap: 6px; }
+  .todo-section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 2px; cursor: pointer; user-select: none;
+  }
+  .todo-section-title {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-muted); display: flex; align-items: center; gap: 8px;
+  }
+  .todo-section-count {
+    background: var(--surface2); border-radius: 10px; padding: 1px 8px;
+    font-size: 11px; color: var(--text-muted); font-weight: 500; letter-spacing: 0;
+  }
+  .todo-caret { font-size: 10px; color: var(--text-faint); transition: transform 0.2s; }
+  .todo-section.collapsed .todo-caret { transform: rotate(-90deg); }
+  .todo-section.collapsed .todo-section-body { display: none; }
+  .todo-section-body { display: flex; flex-direction: column; gap: 4px; }
+
+  .todo-row {
+    display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 8px 12px;
+  }
+  .todo-row:hover { border-color: var(--border-strong); }
+  .todo-row .todo-rank-num {
+    font-size: 12px; color: var(--text-faint); font-weight: 500; text-align: center;
+  }
+  .todo-row.is-done .todo-text { text-decoration: line-through; color: var(--text-faint); }
+  .todo-row.is-done { opacity: 0.7; }
+
   @media (max-width: 640px) {
     header { padding: 0 1rem; }
     .brand span { display: none; }
@@ -539,6 +644,7 @@
       <button class="view-btn"        id="btn-week-grid" onclick="setView('week-grid')">Week Cal</button>
       <button class="view-btn"        id="btn-week-list" onclick="setView('week-list')">Week List</button>
       <button class="view-btn"        id="btn-day"       onclick="setView('day')">Day</button>
+      <button class="view-btn"        id="btn-todo"      onclick="setView('todo')">Todo</button>
     </div>
   </div>
 </header>
@@ -567,6 +673,7 @@
   <div id="week-grid-view"></div>
   <div id="week-list-view"></div>
   <div id="day-view"></div>
+  <div id="todo-view"></div>
 </main>
 
 <!-- MODAL -->
@@ -1635,7 +1742,7 @@ function handleOverlayClick(e) {
 }
 
 // ── CORE ─────────────────────────────────────────────────────────────────────
-const VIEW_IDS = ['grid','list','week-grid','week-list','day'];
+const VIEW_IDS = ['grid','list','week-grid','week-list','day','todo'];
 
 function setView(v) {
   currentView = v;
@@ -1644,6 +1751,13 @@ function setView(v) {
   document.getElementById('week-grid-view').style.display = v==='week-grid' ? 'block' : 'none';
   document.getElementById('week-list-view').style.display = v==='week-list' ? 'flex'  : 'none';
   document.getElementById('day-view').style.display       = v==='day'       ? 'block' : 'none';
+  document.getElementById('todo-view').style.display      = v==='todo'      ? 'flex'  : 'none';
+
+  // Hide the calendar chrome (title, prev/next, legend) in the Todo view.
+  const isTodo = v === 'todo';
+  document.querySelector('.month-nav').style.display = isTodo ? 'none' : '';
+  document.querySelector('.legend').style.display    = isTodo ? 'none' : '';
+
   VIEW_IDS.forEach(id => {
     document.getElementById('btn-'+id).className = 'view-btn' + (v===id ? ' active' : '');
   });
@@ -1692,6 +1806,235 @@ function render() {
   else if (currentView === 'week-grid') renderWeekGrid();
   else if (currentView === 'week-list') renderWeekList();
   else if (currentView === 'day')       renderDay();
+  else if (currentView === 'todo')      renderTodo();
+}
+
+// ── TODO LIST ────────────────────────────────────────────────────────────────
+// DATA['__todos__'] is a JSON array of { id, text, done, createdAt }.
+// The array order IS the priority order — index 0 is the top priority.
+// Only the top 3 (first 3 non-done items) are shown by default; the rest live
+// in a collapsible Backlog section and can be promoted up the list.
+
+const TODOS_KEY          = '__todos__';
+const TODOS_BACKLOG_OPEN = 'fp-todo-backlog-open';
+const TODOS_DONE_OPEN    = 'fp-todo-done-open';
+
+function getTodos()     { try { return JSON.parse(DATA[TODOS_KEY] || '[]'); } catch(e) { return []; } }
+function saveTodos(arr) { DATA[TODOS_KEY] = JSON.stringify(arr); saveData(DATA); }
+function newTodoId()    { return 't-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7); }
+
+function addTodo() {
+  const input = document.getElementById('todo-add-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  const todos = getTodos();
+  // New items go to the bottom of the active list so they don't displace your current top 3.
+  const activeCount = todos.filter(t => !t.done).length;
+  const item = { id: newTodoId(), text, done: false, createdAt: Date.now() };
+  todos.splice(activeCount, 0, item);
+  saveTodos(todos);
+  input.value = '';
+  renderTodo();
+  // Keep focus on the input for fast successive entry.
+  requestAnimationFrame(() => { const el = document.getElementById('todo-add-input'); if (el) el.focus(); });
+}
+
+function updateTodoText(id, text) {
+  const todos = getTodos();
+  const t = todos.find(x => x.id === id);
+  if (!t) return;
+  t.text = text;
+  saveTodos(todos);
+}
+
+function toggleTodoDone(id) {
+  const todos = getTodos();
+  const idx = todos.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  todos[idx].done = !todos[idx].done;
+  // Move completed items to the end so active priorities stay at the top.
+  if (todos[idx].done) {
+    const [done] = todos.splice(idx, 1);
+    todos.push(done);
+  } else {
+    // When un-completing, move back to the end of the active items.
+    const [item] = todos.splice(idx, 1);
+    const activeCount = todos.filter(t => !t.done).length;
+    todos.splice(activeCount, 0, item);
+  }
+  saveTodos(todos);
+  renderTodo();
+}
+
+function deleteTodo(id) {
+  const todos = getTodos().filter(x => x.id !== id);
+  saveTodos(todos);
+  renderTodo();
+}
+
+function moveTodo(id, dir) {
+  const todos = getTodos();
+  const idx = todos.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const target = idx + dir;
+  if (target < 0 || target >= todos.length) return;
+  // Don't let an active item move into the done region (or vice versa).
+  if (todos[idx].done !== todos[target].done) return;
+  const [item] = todos.splice(idx, 1);
+  todos.splice(target, 0, item);
+  saveTodos(todos);
+  renderTodo();
+}
+
+function promoteTodoToTop(id) {
+  const todos = getTodos();
+  const idx = todos.findIndex(x => x.id === id);
+  if (idx === -1 || todos[idx].done) return;
+  const [item] = todos.splice(idx, 1);
+  todos.unshift(item);
+  saveTodos(todos);
+  renderTodo();
+}
+
+function clearCompletedTodos() {
+  const todos = getTodos().filter(x => !x.done);
+  saveTodos(todos);
+  renderTodo();
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderTop3Card(rank, todo) {
+  const placeholder = !todo;
+  const rankNames = { 1: 'rank-1', 2: 'rank-2', 3: 'rank-3' };
+  const classes = ['top3-card', rankNames[rank]];
+  if (placeholder) classes.push('placeholder');
+  if (todo && todo.done) classes.push('is-done');
+  const safeId = todo ? escHtml(todo.id) : '';
+  return `
+    <div class="${classes.join(' ')}">
+      <div class="top3-rank">${rank}</div>
+      <div class="todo-body">
+        ${placeholder
+          ? `<div class="todo-text" style="color:var(--text-faint); font-style:italic; font-weight:300;">Add a task below…</div>`
+          : `<button class="todo-check ${todo.done ? 'is-done' : ''}" title="Mark ${todo.done ? 'not done' : 'done'}"
+                      onclick="toggleTodoDone('${safeId}')">${todo.done ? '✓' : ''}</button>
+             <input class="todo-text" type="text" value="${escHtml(todo.text)}"
+                    onblur="updateTodoText('${safeId}', this.value)"
+                    onkeydown="if(event.key==='Enter'){this.blur();}">`}
+      </div>
+      <div class="todo-actions">
+        ${placeholder ? '' : `
+          <button class="todo-btn" title="Move up"   onclick="moveTodo('${safeId}', -1)" ${rank===1?'disabled':''}>▲</button>
+          <button class="todo-btn" title="Move down" onclick="moveTodo('${safeId}',  1)">▼</button>
+          <button class="todo-btn danger" title="Delete" onclick="deleteTodo('${safeId}')">✕</button>
+        `}
+      </div>
+    </div>
+  `;
+}
+
+function renderTodoRow(todo, displayRank, totalActive) {
+  const safeId = escHtml(todo.id);
+  const isDone = todo.done;
+  return `
+    <div class="todo-row ${isDone ? 'is-done' : ''}">
+      <div class="todo-rank-num">${isDone ? '✓' : '#' + displayRank}</div>
+      <div class="todo-body">
+        <button class="todo-check ${isDone ? 'is-done' : ''}" title="Mark ${isDone ? 'not done' : 'done'}"
+                onclick="toggleTodoDone('${safeId}')">${isDone ? '✓' : ''}</button>
+        <input class="todo-text" type="text" value="${escHtml(todo.text)}"
+               onblur="updateTodoText('${safeId}', this.value)"
+               onkeydown="if(event.key==='Enter'){this.blur();}">
+      </div>
+      <div class="todo-actions">
+        ${isDone ? '' : `
+          <button class="todo-btn" title="Promote to #1"   onclick="promoteTodoToTop('${safeId}')">⇈</button>
+          <button class="todo-btn" title="Move up"         onclick="moveTodo('${safeId}', -1)" ${displayRank===4?'':''}>▲</button>
+          <button class="todo-btn" title="Move down"       onclick="moveTodo('${safeId}',  1)" ${displayRank===totalActive?'disabled':''}>▼</button>
+        `}
+        <button class="todo-btn danger" title="Delete" onclick="deleteTodo('${safeId}')">✕</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderTodo() {
+  const host = document.getElementById('todo-view');
+  if (!host) return;
+  const todos     = getTodos();
+  const active    = todos.filter(t => !t.done);
+  const done      = todos.filter(t => t.done);
+  const top3      = active.slice(0, 3);
+  const backlog   = active.slice(3);
+
+  const backlogOpen = localStorage.getItem(TODOS_BACKLOG_OPEN) === '1';
+  const doneOpen    = localStorage.getItem(TODOS_DONE_OPEN)    === '1';
+
+  const top3Html = [1,2,3].map(r => renderTop3Card(r, top3[r-1])).join('');
+
+  const backlogHtml = backlog.length ? `
+    <div class="todo-section ${backlogOpen ? '' : 'collapsed'}" id="todo-backlog">
+      <div class="todo-section-header" onclick="toggleTodoSection('backlog')">
+        <div class="todo-section-title">
+          <span class="todo-caret">▼</span> Backlog
+          <span class="todo-section-count">${backlog.length}</span>
+        </div>
+        <div class="todo-section-count" style="color:var(--text-faint); background:none;">priority order</div>
+      </div>
+      <div class="todo-section-body">
+        ${backlog.map((t, i) => renderTodoRow(t, i + 4, active.length)).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  const doneHtml = done.length ? `
+    <div class="todo-section ${doneOpen ? '' : 'collapsed'}" id="todo-done">
+      <div class="todo-section-header" onclick="toggleTodoSection('done')">
+        <div class="todo-section-title">
+          <span class="todo-caret">▼</span> Completed
+          <span class="todo-section-count">${done.length}</span>
+        </div>
+        <button class="todo-btn" onclick="event.stopPropagation(); clearCompletedTodos()">Clear all</button>
+      </div>
+      <div class="todo-section-body">
+        ${done.map(t => renderTodoRow(t, 0, active.length)).join('')}
+      </div>
+    </div>
+  ` : '';
+
+  const introHtml = active.length === 0 ? `
+    <div class="todo-intro">
+      What are your top three today?
+      <span class="todo-empty-hint">Add your first task below. The top of the list is what you focus on.</span>
+    </div>
+  ` : `
+    <div class="todo-intro">Your top three, in priority order.</div>
+  `;
+
+  host.innerHTML = `
+    ${introHtml}
+    <div class="top3">${top3Html}</div>
+    <div class="todo-add">
+      <input id="todo-add-input" class="todo-add-input" type="text"
+             placeholder="Add a task and press Enter…"
+             onkeydown="if(event.key==='Enter'){addTodo();}">
+      <button class="todo-add-btn" onclick="addTodo()">Add</button>
+    </div>
+    ${backlogHtml}
+    ${doneHtml}
+  `;
+}
+
+function toggleTodoSection(which) {
+  const key  = which === 'backlog' ? TODOS_BACKLOG_OPEN : TODOS_DONE_OPEN;
+  const open = localStorage.getItem(key) === '1';
+  localStorage.setItem(key, open ? '0' : '1');
+  const el = document.getElementById(which === 'backlog' ? 'todo-backlog' : 'todo-done');
+  if (el) el.classList.toggle('collapsed');
 }
 
 // Initial state — Calendar is primary
@@ -1700,6 +2043,7 @@ document.getElementById('list-view').style.display      = 'none';
 document.getElementById('week-grid-view').style.display = 'none';
 document.getElementById('week-list-view').style.display = 'none';
 document.getElementById('day-view').style.display       = 'none';
+document.getElementById('todo-view').style.display      = 'none';
 render();
 </script>
 </body>
