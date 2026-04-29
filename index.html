@@ -653,7 +653,8 @@
 
   /* ══════════ DASHBOARD (HOME) ══════════ */
   #dashboard-view {
-    display: none; flex-direction: column; gap: 24px; max-width: 880px; margin: 0 auto;
+    display: none; flex-direction: column; gap: 20px;
+    max-width: 1100px; margin: 0 auto;
   }
   .dash-hero {
     text-align: center; padding: 8px 0 4px;
@@ -704,18 +705,149 @@
     transition: background 0.12s;
   }
   .dash-today-blocks:hover { background: rgba(0,0,0,0.03); }
-  .dash-la-day {
-    display: grid; grid-template-columns: 118px 1fr; gap: 14px;
-    padding: 12px 0; border-bottom: 1px solid var(--border); align-items: start;
+
+  /* Home: Top 3 | Today side by side */
+  .dash-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
   }
-  .dash-la-day:last-child { border-bottom: none; }
-  .dash-la-day.is-weekend .dash-la-dow { color: var(--text-faint); }
-  .dash-la-date { display: flex; flex-direction: column; gap: 2px; }
-  .dash-la-dow { font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+  @media (max-width: 900px) {
+    .dash-two-col { grid-template-columns: 1fr; }
+  }
+  .dash-col-top3 .dash-section-title { margin-bottom: 8px; }
+  .dash-col-top3 .top3 .top3-card { padding: 12px 14px; gap: 10px; }
+  .dash-col-top3 .top3 .top3-rank { font-size: 34px; }
+  .dash-col-today .dash-today { padding: 16px 18px; }
+
+  /* Next 10 days — calendar strip */
+  .dash-cal-caption {
+    font-size: 12px; color: var(--text-muted); margin: -6px 0 12px; line-height: 1.4;
+  }
+  .dash-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  @media (max-width: 840px) {
+    .dash-cal-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 480px) {
+    .dash-cal-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .dash-cal-cell {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    min-height: 112px;
+    padding: 8px 10px 10px;
+    display: flex; flex-direction: column; gap: 6px;
+    cursor: pointer;
+    transition: border-color 0.12s, box-shadow 0.12s;
+  }
+  .dash-cal-cell:hover { border-color: var(--border-strong); box-shadow: 0 1px 6px rgba(0,0,0,0.06); }
+  .dash-cal-cell.is-weekend { background: rgba(245, 243, 238, 0.9); }
+  .dash-cal-cell-hdr {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 4px;
+    border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 2px;
+  }
+  .dash-cal-cell .dash-la-dow { font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
     text-transform: uppercase; color: var(--text-muted); }
-  .dash-la-num { font-size: 14px; font-weight: 500; color: var(--text); }
-  .dash-la-chips .event-chip, .dash-la-chips .flight-chip { margin-bottom: 3px; }
-  .dash-la-empty { font-size: 13px; color: var(--text-faint); font-style: italic; font-weight: 300; }
+  .dash-cal-cell .dash-la-num { font-size: 15px; font-weight: 600; color: var(--text); font-family: 'DM Serif Display', serif; }
+  .dash-cal-cell .dash-la-body { flex: 1; min-height: 0; overflow: hidden; }
+  .dash-cal-cell .event-chips, .dash-cal-cell .dash-la-chips { gap: 2px; }
+  .dash-cal-cell .event-chip, .dash-cal-cell .flight-chip {
+    font-size: 10px; padding: 2px 5px;
+  }
+  .dash-la-empty { font-size: 11px; color: var(--text-faint); font-style: italic; font-weight: 300; }
+
+  /* ── PROJECT PLATES (HOME) ── */
+  .dash-projects-intro {
+    font-size: 12px; color: var(--text-muted); margin: -4px 0 14px; line-height: 1.45;
+  }
+  .proj-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .proj-card {
+    --plate: #378ADD;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--surface2) 100%);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 14px 12px;
+    display: flex; flex-direction: column; gap: 10px;
+    transition: box-shadow 0.15s, border-color 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .proj-card::before {
+    content: ''; position: absolute; top: -40%; left: -20%; width: 80%; height: 70%; border-radius: 50%;
+    background: radial-gradient(circle at 50% 60%, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 72%);
+    pointer-events: none; opacity: 0.85;
+  }
+  .proj-card-inner { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 10px; }
+  .proj-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); border-color: rgba(0,0,0,0.12); }
+  .proj-card.is-stale {
+    border-color: var(--ooo-border);
+    background: linear-gradient(180deg, var(--ooo-bg) 0%, var(--surface) 60%);
+  }
+  .proj-plate-row { display: flex; align-items: center; gap: 12px; }
+  .proj-plate-svg-wrap {
+    flex-shrink: 0; width: 92px; height: 48px; display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .proj-plate-svg { width: 92px; height: 48px; display: block; position: relative; z-index: 1; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.08)); }
+  .proj-plate-pct {
+    position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); z-index: 2;
+    font-size: 11px; font-weight: 600; color: var(--text-muted); pointer-events: none;
+  }
+  .proj-plate-head { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .proj-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .proj-name { font-family: 'DM Serif Display', serif; font-size: 17px; letter-spacing: -0.2px; color: var(--text); }
+  .proj-badge {
+    font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ooo-text); background: var(--ooo-bg); border: 1px solid var(--ooo-border);
+    padding: 2px 7px; border-radius: 20px; white-space: nowrap;
+  }
+  .proj-bar-wrap {
+    height: 6px; background: var(--surface); border-radius: 4px; overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .proj-bar { height: 100%; border-radius: 4px; transition: width 0.25s; background: var(--plate);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.38); }
+  .proj-card.is-stale .proj-bar { background: linear-gradient(90deg, var(--ooo-border), var(--vpres-border)); }
+  .proj-plate-swatches {
+    display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  }
+  .proj-plate-swatches span { font-size: 9px; color: var(--text-faint); margin-right: 4px; }
+  .plate-swatch {
+    width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--surface);
+    cursor: pointer; padding: 0; flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.12); transition: transform 0.12s;
+  }
+  .plate-swatch:hover { transform: scale(1.12); box-shadow: 0 0 0 2px var(--plate), 0 0 0 1px rgba(0,0,0,0.12); }
+  .proj-meta { font-size: 12px; color: var(--text-muted); }
+  .proj-hint { font-size: 12px; color: var(--text-muted); font-style: italic; line-height: 1.35; }
+  .proj-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+  .proj-btn {
+    font-size: 11px; font-family: 'DM Sans', sans-serif; font-weight: 500;
+    padding: 5px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--surface); cursor: pointer; color: var(--text-muted); transition: all 0.12s;
+  }
+  .proj-btn:hover { color: var(--text); border-color: var(--text-muted); }
+  .proj-btn.primary { background: var(--text); color: #fff; border-color: var(--text); }
+  .proj-btn.primary:hover { opacity: 0.9; }
+
+  .todo-project-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 20px;
+    padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  }
+  .todo-project-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+  .todo-project-select {
+    font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 6px 10px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); min-width: 160px;
+  }
 
   @media (max-width: 640px) {
     header { padding: 0 1rem; }
@@ -729,8 +861,6 @@
     .event-field.full { grid-column: span 1; }
     .recur-options { grid-template-columns: 1fr; }
     .recur-day-picker { grid-column: span 1; }
-    .dash-la-day { grid-template-columns: 1fr; gap: 8px; }
-    .dash-la-date { flex-direction: row; align-items: baseline; gap: 8px; }
   }
 </style>
 </head>
@@ -1928,10 +2058,11 @@ function renderDashboard() {
   const host = document.getElementById('dashboard-view');
   if (!host) return;
 
-  const todos = getTodos();
-  const active = todos.filter(t => !t.done);
-  const top3 = active.slice(0, 3);
+  const todosAll = getTodos();
+  const activeGen = todosAll.filter(t => !t.done && t.projectId === GENERAL_PID);
+  const top3 = activeGen.slice(0, 3);
   const top3Html = [1, 2, 3].map(r => renderTop3Card(r, top3[r - 1])).join('');
+  const projectPlatesHtml = renderProjectCardsHtml();
 
   const todayKey = dkFromDate(today);
   const todayEvents = getEventsForDay(today);
@@ -1952,13 +2083,13 @@ function renderDashboard() {
     const chips = evs.map(ev => chipHTML(ev, key)).join('') + fls.map(fl => flightChipHTML(fl, key)).join('');
     const isWknd = d.getDay() === 0 || d.getDay() === 6;
     lookaheadParts.push(`
-      <div class="dash-la-day ${isWknd ? 'is-weekend' : ''}" data-dk="${key}">
-        <div class="dash-la-date">
+      <div class="dash-cal-cell ${isWknd ? 'is-weekend' : ''}" data-dk="${key}">
+        <div class="dash-cal-cell-hdr">
           <span class="dash-la-dow">${DAYS[d.getDay()]}</span>
           <span class="dash-la-num">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span>
         </div>
         <div class="dash-la-body">
-          <div class="event-chips dash-la-chips">${chips ? chips : `<span class="dash-la-empty">Nothing scheduled</span>`}</div>
+          <div class="event-chips dash-la-chips">${chips ? chips : `<span class="dash-la-empty">—</span>`}</div>
         </div>
       </div>
     `);
@@ -1974,8 +2105,17 @@ function renderDashboard() {
       <p class="dash-hero-sub">Your day at a glance</p>
     </div>
 
-    <div class="dash-section">
-      <h3 class="dash-section-title">Top 3 priorities</h3>
+    <div class="dash-section dash-projects">
+      <h3 class="dash-section-title">Projects · spinning plates</h3>
+      <p class="dash-projects-intro">Each plate uses your todos for progress.
+        Tap <strong>Worked today</strong> after you spend time. <strong>Color</strong> dots set the plate accent · ⚙ for upkeep and alert timing.</p>
+      <div class="proj-grid">${projectPlatesHtml}</div>
+    </div>
+
+    <div class="dash-two-col">
+      <div class="dash-section dash-col-top3">
+      <h3 class="dash-section-title">Top 3 priorities <span style="font-size:13px;color:var(--text-muted);font-weight:400;font-family:'DM Sans',sans-serif">(General)</span></h3>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Quick capture here goes to <strong>General</strong>. Switch projects in the Todo tab.</p>
       <div class="top3">${top3Html}</div>
       <div class="todo-add-wrap">
         <div class="todo-add">
@@ -1987,24 +2127,25 @@ function renderDashboard() {
         </div>
         <div class="todo-matches" id="dashboard-todo-matches"></div>
       </div>
-    </div>
+      </div>
 
-    <div class="dash-section dash-today">
+      <div class="dash-section dash-col-today dash-today">
       <div class="dash-section-head">
-        <h3 class="dash-section-title">Today on the calendar</h3>
-        <button type="button" class="dash-add-appt" onclick="openDashboardTodayModal()">+ Add appointment</button>
+        <h3 class="dash-section-title">Today</h3>
+        <button type="button" class="dash-add-appt" onclick="openDashboardTodayModal()">+ Appointment</button>
       </div>
       ${statusTag}
       ${todayNote ? `<div class="dash-note-preview">${escHtml(todayNote)}</div>` : ''}
       <div class="dash-today-blocks" data-dk="${todayKey}">
-        <div class="event-chips">${todayChips ? todayChips : `<span class="dash-la-empty">No events or flights today — click here to add a note or event</span>`}</div>
+        <div class="event-chips">${todayChips ? todayChips : `<span class="dash-la-empty">No events · click to edit the day</span>`}</div>
+      </div>
       </div>
     </div>
 
     <div class="dash-section">
       <h3 class="dash-section-title">Next 10 days</h3>
-      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Starting tomorrow · click a day to open it</p>
-      <div class="dash-lookahead">${lookaheadParts.join('')}</div>
+      <p class="dash-cal-caption">Ten calendar days ahead of today · tap a cell to open it (events open from chips)</p>
+      <div class="dash-cal-grid">${lookaheadParts.join('')}</div>
     </div>
   `;
 
@@ -2023,6 +2164,8 @@ function renderDashboard() {
 
   wireChips(host);
 
+  wireDashboardProjectCards(host);
+
   const todayBlock = host.querySelector('.dash-today-blocks');
   if (todayBlock) {
     todayBlock.addEventListener('click', () => {
@@ -2033,7 +2176,7 @@ function renderDashboard() {
     });
   }
 
-  host.querySelectorAll('.dash-la-day').forEach(row => {
+  host.querySelectorAll('.dash-cal-cell').forEach(row => {
     row.addEventListener('click', (e) => {
       if (e.target.closest('.event-chip') || e.target.closest('.flight-chip')) return;
       const key = row.dataset.dk;
@@ -2045,19 +2188,273 @@ function renderDashboard() {
   });
 }
 
-// ── TODO LIST ────────────────────────────────────────────────────────────────
-// DATA['__todos__'] is a JSON array of { id, text, done, createdAt }.
-// The array order IS the priority order — index 0 is the top priority.
-// Only the top 3 (first 3 non-done items) are shown by default; the rest live
-// in a collapsible Backlog section and can be promoted up the list.
+// ── TODO LIST + PROJECTS ─────────────────────────────────────────────────────
+// DATA['__todos__'] — { id, text, done, createdAt, projectId }
+// DATA['__projects__'] — { id, name, maintenanceHint, lastTouchAt, staleAfterDays, sort, plateColor }
+// Global list order is priority; move/reorder is scoped within the same project + done state.
 
 const TODOS_KEY          = '__todos__';
+const PROJECTS_KEY       = '__projects__';
+const GENERAL_PID        = 'p-general';
 const TODOS_BACKLOG_OPEN = 'fp-todo-backlog-open';
 const TODOS_DONE_OPEN    = 'fp-todo-done-open';
 
-function getTodos()     { try { return JSON.parse(DATA[TODOS_KEY] || '[]'); } catch(e) { return []; } }
+const PLATE_HEX_DEFAULT = ['#378ADD', '#1D9E75', '#D85A30', '#9B59D0', '#E8157A', '#F26D00'];
+const PLATE_SWATCH_PALETTE = ['#378ADD', '#1D9E75', '#D85A30', '#9B59D0', '#E8157A', '#F26D00', '#2BB3C5', '#6B7280', '#92400E', '#065F46'];
+
+let _fpProjectsMigrated = false;
+let selectedTodoProjectId = (typeof localStorage !== 'undefined' && localStorage.getItem('fp-todo-project')) || GENERAL_PID;
+
+function ensureProjectsMigrated() {
+  if (_fpProjectsMigrated) return;
+  _fpProjectsMigrated = true;
+  try {
+    let projects = [];
+    try { projects = JSON.parse(DATA[PROJECTS_KEY] || '[]'); } catch (_) { projects = []; }
+    if (!Array.isArray(projects)) projects = [];
+    let addedGeneral = false;
+    if (!projects.some(p => p && p.id === GENERAL_PID)) {
+      addedGeneral = true;
+      projects.unshift({
+        id: GENERAL_PID, name: 'General', maintenanceHint: '',
+        lastTouchAt: Date.now(), staleAfterDays: 7, sort: -1,
+      });
+    }
+    projects.forEach((p, i) => { if (p && (p.sort === undefined || p.sort === null)) p.sort = i; });
+    let plateFix = false;
+    projects.forEach((p, idx) => {
+      if (!p.plateColor) {
+        p.plateColor = PLATE_HEX_DEFAULT[idx % PLATE_HEX_DEFAULT.length];
+        plateFix = true;
+      }
+    });
+    DATA[PROJECTS_KEY] = JSON.stringify(projects);
+
+    let todos = [];
+    try { todos = JSON.parse(DATA[TODOS_KEY] || '[]'); } catch (_) { todos = []; }
+    let changedTodos = false;
+    for (const t of todos) {
+      if (t && !t.projectId) { t.projectId = GENERAL_PID; changedTodos = true; }
+    }
+    if (changedTodos) DATA[TODOS_KEY] = JSON.stringify(todos);
+    if (addedGeneral || changedTodos || plateFix) saveData(DATA);
+    else saveLocal(DATA);
+  } catch (e) { console.warn('[FP] project migrate', e); }
+}
+
+function getProjects() {
+  ensureProjectsMigrated();
+  try {
+    return JSON.parse(DATA[PROJECTS_KEY] || '[]').sort((a, b) => (a.sort | 0) - (b.sort | 0));
+  } catch (_) { return []; }
+}
+
+function saveProjects(arr) {
+  DATA[PROJECTS_KEY] = JSON.stringify(arr);
+  saveData(DATA);
+}
+
+function getTodos() {
+  ensureProjectsMigrated();
+  try { return JSON.parse(DATA[TODOS_KEY] || '[]'); } catch (_) { return []; }
+}
+
 function saveTodos(arr) { DATA[TODOS_KEY] = JSON.stringify(arr); saveData(DATA); }
-function newTodoId()    { return 't-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7); }
+function newTodoId() { return 't-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
+
+function touchProject(pid) {
+  const projects = getProjects();
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  p.lastTouchAt = Date.now();
+  saveProjects(projects);
+}
+
+function projectWorkedToday(pid) {
+  touchProject(pid);
+  refreshTodoViews();
+}
+
+function openTodoForProject(pid) {
+  selectedTodoProjectId = pid;
+  try { localStorage.setItem('fp-todo-project', pid); } catch (_) {}
+  setView('todo');
+}
+
+function onTodoProjectChange(pid) {
+  selectedTodoProjectId = pid;
+  try { localStorage.setItem('fp-todo-project', pid); } catch (_) {}
+  renderTodo();
+}
+
+function addProjectFromPrompt() {
+  const name = prompt('New project name:');
+  if (!name || !String(name).trim()) return;
+  const projects = getProjects();
+  const id = 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6);
+  projects.push({
+    id,
+    name: String(name).trim(),
+    maintenanceHint: '',
+    lastTouchAt: Date.now(),
+    staleAfterDays: 7,
+    sort: projects.length,
+    plateColor: PLATE_HEX_DEFAULT[projects.length % PLATE_HEX_DEFAULT.length],
+  });
+  saveProjects(projects);
+  selectedTodoProjectId = id;
+  try { localStorage.setItem('fp-todo-project', id); } catch (_) {}
+  refreshTodoViews();
+}
+
+function promptProjectSettings(pid) {
+  const projects = getProjects();
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  const hint = prompt('Maintenance / upkeep reminder (one line, optional):', p.maintenanceHint || '');
+  if (hint === null) return;
+  const dr = prompt(
+    'Show “Needs attention” if you have not logged activity for this many days:',
+    String(p.staleAfterDays != null ? p.staleAfterDays : 7)
+  );
+  if (dr === null) return;
+  const n = parseInt(dr, 10);
+  p.maintenanceHint = String(hint).trim();
+  p.staleAfterDays = (!isNaN(n) && n >= 1 && n <= 365) ? n : 7;
+  const col = prompt(
+    'Plate accent color (#RRGGBB), optional — blank keeps the current swatch:',
+    p.plateColor || ''
+  );
+  if (col !== null && col.trim() !== '' && /^#[0-9A-Fa-f]{6}$/.test(col.trim())) {
+    p.plateColor = col.trim();
+  }
+  saveProjects(projects);
+  refreshTodoViews();
+}
+
+function getAddTodoProjectId() {
+  if (currentView === 'dashboard') return GENERAL_PID;
+  return selectedTodoProjectId || GENERAL_PID;
+}
+
+function daysSinceTouchMs(ms) {
+  if (ms == null) return Infinity;
+  return Math.floor((Date.now() - ms) / 86400000);
+}
+
+function sanitizePlateHex(v) {
+  if (v == null || typeof v !== 'string') return '#378ADD';
+  const s = v.trim();
+  return /^#[0-9A-Fa-f]{6}$/.test(s) ? s : '#378ADD';
+}
+
+function plateGradientUid(pid) {
+  let h = 0;
+  for (let i = 0; i < pid.length; i++) h = (h + pid.charCodeAt(i) * (i + 241)) >>> 0;
+  return 'pgrad' + h.toString(36);
+}
+
+function plateSvgMarkup(gradId, strokeHex) {
+  const eh = sanitizePlateHex(strokeHex);
+  return `<svg class="proj-plate-svg" viewBox="0 0 112 54" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="${gradId}" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:#ffffff;stop-opacity:.75"/>
+        <stop offset="42%" style="stop-color:${eh};stop-opacity:.28"/>
+        <stop offset="100%" style="stop-color:${eh};stop-opacity:.95"/>
+      </linearGradient>
+    </defs>
+    <ellipse cx="56" cy="29" rx="50" ry="21" fill="url(#${gradId})" stroke="${eh}" stroke-width="1.75"/>
+    <ellipse cx="56" cy="27" rx="46" ry="8" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="0.55" opacity=".75"/>
+  </svg>`;
+}
+
+function setProjectPlateColor(pid, hex) {
+  const h = sanitizePlateHex(hex);
+  const projects = getProjects();
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  p.plateColor = h;
+  saveProjects(projects);
+  refreshTodoViews();
+}
+
+/** Progress + plate cards on Home */
+function renderProjectCardsHtml() {
+  const projects = getProjects();
+  const allTodos = getTodos();
+  return projects.map(p => {
+    const scoped = allTodos.filter(t => t.projectId === p.id);
+    const doneC = scoped.filter(t => t.done).length;
+    const total = scoped.length;
+    const pct = total ? Math.round((doneC / total) * 100) : 0;
+    const thresh = (p.staleAfterDays != null && p.staleAfterDays > 0) ? p.staleAfterDays : 7;
+    const days = daysSinceTouchMs(p.lastTouchAt);
+    const stale = p.lastTouchAt == null || days >= thresh || days === Infinity;
+    let lastLabel;
+    if (p.lastTouchAt == null) lastLabel = 'never logged';
+    else if (days === 0) lastLabel = 'today';
+    else if (days === 1) lastLabel = 'yesterday';
+    else lastLabel = `${days} days ago`;
+
+    const hint = (p.maintenanceHint || '').trim();
+    const attrId = esc(p.id);
+    const hx = sanitizePlateHex(p.plateColor);
+    const gid = plateGradientUid(p.id);
+
+    const swatches = PLATE_SWATCH_PALETTE.map(hex =>
+      `<button type="button" class="plate-swatch" data-hex="${hex}" style="background:${hex}"
+        title="${hex}" aria-label="Set plate ${hex}"></button>`
+    ).join('');
+
+    const safeHint = hint ? `<div class="proj-hint">${escHtml(hint)}</div>` : '';
+
+    return `
+      <div class="proj-card ${stale ? 'is-stale' : ''}" data-project-id="${attrId}" style="--plate:${hx}">
+      <div class="proj-card-inner">
+        <div class="proj-plate-row">
+          <div class="proj-plate-svg-wrap" style="--plate:${hx}">
+            ${plateSvgMarkup(gid, hx)}
+            <span class="proj-plate-pct">${pct}%</span>
+          </div>
+          <div class="proj-plate-head">
+            <div class="proj-card-top">
+              <span class="proj-name">${escHtml(p.name)}</span>
+              ${stale ? '<span class="proj-badge">Needs attention</span>' : ''}
+            </div>
+          </div>
+        </div>
+        <div class="proj-bar-wrap" title="${doneC} of ${total} tasks done"><div class="proj-bar" style="width:${pct}%"></div></div>
+        <div class="proj-meta">${total ? `${doneC}/${total} done` : 'No tasks yet'} · Activity: ${lastLabel}</div>
+        ${safeHint}
+        <div class="proj-plate-swatches"><span>Color</span>${swatches}</div>
+        <div class="proj-actions">
+          <button type="button" class="proj-btn primary proj-plate-work">Worked today</button>
+          <button type="button" class="proj-btn proj-plate-open">Open todos</button>
+          <button type="button" class="proj-btn proj-plate-edit" title="Maintenance & timing">⚙</button>
+        </div>
+      </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function wireDashboardProjectCards(host) {
+  host.querySelectorAll('.proj-card').forEach(card => {
+    const pid = card.dataset.projectId;
+    if (!pid) return;
+    card.querySelector('.proj-plate-work')?.addEventListener('click', () => projectWorkedToday(pid));
+    card.querySelector('.proj-plate-open')?.addEventListener('click', () => openTodoForProject(pid));
+    card.querySelector('.proj-plate-edit')?.addEventListener('click', () => promptProjectSettings(pid));
+    card.querySelectorAll('.plate-swatch').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        setProjectPlateColor(pid, btn.dataset.hex);
+      });
+    });
+  });
+}
 
 function addTodo() {
   const input = document.getElementById('todo-add-input') || document.getElementById('dashboard-todo-add-input');
@@ -2065,14 +2462,14 @@ function addTodo() {
   const text = input.value.trim();
   if (!text) return;
   const todos = getTodos();
-  // New items go to the bottom of the active list so they don't displace your current top 3.
+  const pid = getAddTodoProjectId();
   const activeCount = todos.filter(t => !t.done).length;
-  const item = { id: newTodoId(), text, done: false, createdAt: Date.now() };
+  const item = { id: newTodoId(), text, done: false, createdAt: Date.now(), projectId: pid };
   todos.splice(activeCount, 0, item);
   saveTodos(todos);
+  touchProject(pid);
   input.value = '';
   refreshTodoViews();
-  // Keep focus on the input for fast successive entry.
   requestAnimationFrame(() => {
     const el = document.getElementById('todo-add-input') || document.getElementById('dashboard-todo-add-input');
     if (el) el.focus();
@@ -2091,24 +2488,28 @@ function toggleTodoDone(id) {
   const todos = getTodos();
   const idx = todos.findIndex(x => x.id === id);
   if (idx === -1) return;
+  const pid = todos[idx].projectId;
   todos[idx].done = !todos[idx].done;
-  // Move completed items to the end so active priorities stay at the top.
   if (todos[idx].done) {
     const [done] = todos.splice(idx, 1);
     todos.push(done);
   } else {
-    // When un-completing, move back to the end of the active items.
     const [item] = todos.splice(idx, 1);
     const activeCount = todos.filter(t => !t.done).length;
     todos.splice(activeCount, 0, item);
   }
   saveTodos(todos);
+  if (pid) touchProject(pid);
   refreshTodoViews();
 }
 
 function deleteTodo(id) {
-  const todos = getTodos().filter(x => x.id !== id);
-  saveTodos(todos);
+  const todos = getTodos();
+  const t = todos.find(x => x.id === id);
+  const pid = t && t.projectId;
+  const next = todos.filter(x => x.id !== id);
+  saveTodos(next);
+  if (pid) touchProject(pid);
   refreshTodoViews();
 }
 
@@ -2116,13 +2517,22 @@ function moveTodo(id, dir) {
   const todos = getTodos();
   const idx = todos.findIndex(x => x.id === id);
   if (idx === -1) return;
-  const target = idx + dir;
-  if (target < 0 || target >= todos.length) return;
-  // Don't let an active item move into the done region (or vice versa).
-  if (todos[idx].done !== todos[target].done) return;
-  const [item] = todos.splice(idx, 1);
-  todos.splice(target, 0, item);
+  const pid = todos[idx].projectId;
+  const doneSame = todos[idx].done;
+
+  const blockIdx = [];
+  for (let i = 0; i < todos.length; i++) {
+    if (todos[i].projectId === pid && todos[i].done === doneSame) blockIdx.push(i);
+  }
+  const sub = blockIdx.indexOf(idx);
+  const targetSub = sub + dir;
+  if (targetSub < 0 || targetSub >= blockIdx.length) return;
+  const j = blockIdx[targetSub];
+  const tmp = todos[idx];
+  todos[idx] = todos[j];
+  todos[j] = tmp;
   saveTodos(todos);
+  if (pid) touchProject(pid);
   refreshTodoViews();
 }
 
@@ -2130,15 +2540,25 @@ function promoteTodoToTop(id) {
   const todos = getTodos();
   const idx = todos.findIndex(x => x.id === id);
   if (idx === -1 || todos[idx].done) return;
+  const pid = todos[idx].projectId;
   const [item] = todos.splice(idx, 1);
-  todos.unshift(item);
+  let insertAt = todos.findIndex(t => !t.done && t.projectId === pid);
+  if (insertAt === -1) {
+    const activeCount = todos.filter(t => !t.done).length;
+    todos.splice(activeCount, 0, item);
+  } else {
+    todos.splice(insertAt, 0, item);
+  }
   saveTodos(todos);
+  if (pid) touchProject(pid);
   refreshTodoViews();
 }
 
 function clearCompletedTodos() {
-  const todos = getTodos().filter(x => !x.done);
+  const pid = selectedTodoProjectId || GENERAL_PID;
+  const todos = getTodos().filter(x => !(x.done && x.projectId === pid));
   saveTodos(todos);
+  touchProject(pid);
   refreshTodoViews();
 }
 
@@ -2204,13 +2624,27 @@ function renderTodoRow(todo, displayRank, totalActive) {
 function renderTodo() {
   const host = document.getElementById('todo-view');
   if (!host) return;
-  const todos     = getTodos();
+
+  const projects = getProjects();
+  let pid = selectedTodoProjectId || GENERAL_PID;
+  if (!projects.some(p => p.id === pid)) {
+    pid = GENERAL_PID;
+    selectedTodoProjectId = GENERAL_PID;
+    try { localStorage.setItem('fp-todo-project', GENERAL_PID); } catch (_) {}
+  }
+
+  const projOpts = projects.map(p =>
+    `<option value="${esc(p.id)}"${p.id === pid ? ' selected' : ''}>${escHtml(p.name)}</option>`
+  ).join('');
+
+  const curName = escHtml((projects.find(p => p.id === pid) || {}).name || 'Project');
+
+  const todos = getTodos().filter(t => t.projectId === pid);
   const active    = todos.filter(t => !t.done);
   const done      = todos.filter(t => t.done);
   const top3      = active.slice(0, 3);
   const backlog   = active.slice(3);
 
-  // Default: open the backlog so "see everything" is a one-click glance.
   if (localStorage.getItem(TODOS_BACKLOG_OPEN) === null) {
     localStorage.setItem(TODOS_BACKLOG_OPEN, '1');
   }
@@ -2251,11 +2685,11 @@ function renderTodo() {
 
   const introHtml = active.length === 0 ? `
     <div class="todo-intro">
-      What are your top three today?
-      <span class="todo-empty-hint">Add your first task below. The top of the list is what you focus on.</span>
+      Top three for ${curName}?
+      <span class="todo-empty-hint">Add your first task for this project below. The top of the list is what you focus on.</span>
     </div>
   ` : `
-    <div class="todo-intro">Your top three, in priority order.</div>
+    <div class="todo-intro">Your top three for <strong>${curName}</strong>, in priority order.</div>
   `;
 
   const toolbarHtml = todos.length ? `
@@ -2273,6 +2707,11 @@ function renderTodo() {
   ` : '';
 
   host.innerHTML = `
+    <div class="todo-project-bar">
+      <span class="todo-project-label">Project</span>
+      <select class="todo-project-select" id="todo-project-select" onchange="onTodoProjectChange(this.value)">${projOpts}</select>
+      <button type="button" class="todo-btn" onclick="addProjectFromPrompt()">+ New project</button>
+    </div>
     ${introHtml}
     <div class="top3">${top3Html}</div>
     <div class="todo-add-wrap">
@@ -2297,7 +2736,11 @@ function updateTodoMatches(query) {
   const q = (query || '').trim().toLowerCase();
   if (q.length < 2) { box.classList.remove('is-open'); box.innerHTML = ''; return; }
 
-  const todos    = getTodos();
+  let scopePid = GENERAL_PID;
+  if (currentView === 'todo') scopePid = selectedTodoProjectId || GENERAL_PID;
+  else if (currentView === 'dashboard') scopePid = GENERAL_PID;
+
+  const todos    = getTodos().filter(t => t.projectId === scopePid);
   const active   = todos.filter(t => !t.done);
   const done     = todos.filter(t => t.done);
   const inTop    = new Set(active.slice(0, 3).map(t => t.id));
