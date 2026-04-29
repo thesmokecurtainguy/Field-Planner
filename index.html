@@ -838,6 +838,8 @@
   .proj-btn:hover { color: var(--text); border-color: var(--text-muted); }
   .proj-btn.primary { background: var(--text); color: #fff; border-color: var(--text); }
   .proj-btn.primary:hover { opacity: 0.9; }
+  .proj-btn.danger { color: var(--ooo-text); border-color: rgba(216, 90, 48, 0.35); }
+  .proj-btn.danger:hover { background: var(--ooo-bg); border-color: var(--ooo-border); color: var(--ooo-text); }
 
   .todo-project-bar {
     display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 20px;
@@ -2311,6 +2313,10 @@ function promptProjectSettings(pid) {
   const projects = getProjects();
   const p = projects.find(x => x.id === pid);
   if (!p) return;
+  const nm = prompt('Project name:', p.name || '');
+  if (nm === null) return;
+  const nmTrim = String(nm).trim();
+  if (nmTrim) p.name = nmTrim;
   const hint = prompt('Maintenance / upkeep reminder (one line, optional):', p.maintenanceHint || '');
   if (hint === null) return;
   const dr = prompt(
@@ -2329,6 +2335,26 @@ function promptProjectSettings(pid) {
     p.plateColor = col.trim();
   }
   saveProjects(projects);
+  refreshTodoViews();
+}
+
+/** Remove a project plate; todos move to General. Cannot remove General. */
+function deleteProject(pid) {
+  if (!pid || pid === GENERAL_PID) return;
+  const ok = confirm(
+    'Remove this project? All tasks in it move to General.'
+  );
+  if (!ok) return;
+  const projects = getProjects().filter(p => p.id !== pid);
+  const todos = getTodos().map(t =>
+    (t.projectId === pid) ? { ...t, projectId: GENERAL_PID } : t
+  );
+  saveProjects(projects);
+  saveTodos(todos);
+  if (selectedTodoProjectId === pid) {
+    selectedTodoProjectId = GENERAL_PID;
+    try { localStorage.setItem('fp-todo-project', GENERAL_PID); } catch (_) {}
+  }
   refreshTodoViews();
 }
 
@@ -2431,7 +2457,8 @@ function renderProjectCardsHtml() {
         <div class="proj-actions">
           <button type="button" class="proj-btn primary proj-plate-work">Worked today</button>
           <button type="button" class="proj-btn proj-plate-open">Open todos</button>
-          <button type="button" class="proj-btn proj-plate-edit" title="Maintenance & timing">⚙</button>
+          <button type="button" class="proj-btn proj-plate-edit" title="Name, maintenance, color">⚙</button>
+          ${p.id !== GENERAL_PID ? `<button type="button" class="proj-btn danger proj-plate-delete" title="Remove project (tasks → General)">Remove</button>` : ''}
         </div>
       </div>
       </div>
@@ -2446,6 +2473,11 @@ function wireDashboardProjectCards(host) {
     card.querySelector('.proj-plate-work')?.addEventListener('click', () => projectWorkedToday(pid));
     card.querySelector('.proj-plate-open')?.addEventListener('click', () => openTodoForProject(pid));
     card.querySelector('.proj-plate-edit')?.addEventListener('click', () => promptProjectSettings(pid));
+    card.querySelector('.proj-plate-delete')?.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      deleteProject(pid);
+    });
     card.querySelectorAll('.plate-swatch').forEach(btn => {
       btn.addEventListener('click', e => {
         e.preventDefault();
@@ -2711,6 +2743,7 @@ function renderTodo() {
       <span class="todo-project-label">Project</span>
       <select class="todo-project-select" id="todo-project-select" onchange="onTodoProjectChange(this.value)">${projOpts}</select>
       <button type="button" class="todo-btn" onclick="addProjectFromPrompt()">+ New project</button>
+      ${pid !== GENERAL_PID ? `<button type="button" class="todo-btn danger" onclick="deleteProject(${JSON.stringify(pid)})">Remove project…</button>` : ''}
     </div>
     ${introHtml}
     <div class="top3">${top3Html}</div>
