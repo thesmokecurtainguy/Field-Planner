@@ -769,6 +769,39 @@
   .dash-col-top3 .top3 .top3-import { min-height: 36px; }
   .dash-col-today .dash-today { padding: 16px 18px; }
 
+  .dash-upcoming .dash-section-title { margin-bottom: 6px; }
+  .dash-upcoming .dash-cal-caption { margin: -2px 0 12px; }
+  .dash-upcoming-list {
+    display: flex; flex-direction: column; gap: 0;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    overflow: hidden; background: var(--surface2);
+  }
+  .dash-upcoming-row {
+    display: grid;
+    grid-template-columns: minmax(96px, 128px) minmax(48px, 76px) minmax(0, 1fr);
+    gap: 8px 12px; align-items: baseline;
+    padding: 11px 14px; font-size: 14px; border-bottom: 1px solid var(--border);
+    cursor: pointer; transition: background 0.1s;
+  }
+  .dash-upcoming-row:last-child { border-bottom: none; }
+  .dash-upcoming-row:hover { background: var(--surface); }
+  .dash-upcoming-when {
+    font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap;
+  }
+  .dash-upcoming-time { font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .dash-upcoming-title { color: var(--text); line-height: 1.4; min-width: 0; }
+  .dash-upcoming-recur { font-size: 12px; opacity: 0.65; margin-right: 2px; }
+  .dash-upcoming-empty {
+    font-size: 14px; color: var(--text-muted); line-height: 1.5; margin: 0;
+    padding: 12px 2px 4px;
+  }
+  @media (max-width: 520px) {
+    .dash-upcoming-row {
+      grid-template-columns: 1fr;
+      gap: 3px;
+    }
+  }
+
   /* Next 10 days — calendar strip */
   .dash-cal-caption {
     font-size: 12px; color: var(--text-muted); margin: -6px 0 12px; line-height: 1.4;
@@ -809,6 +842,24 @@
     font-size: 10px; padding: 2px 5px;
   }
   .dash-la-empty { font-size: 11px; color: var(--text-faint); font-style: italic; font-weight: 300; }
+  /* Day tags match Month/Week grid (Travel, OOO, …)—same DATA key as other views */
+  .dash-la-status-tag {
+    display: inline-block; font-size: 9px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 2px 6px; border-radius: 3px;
+    margin-top: 4px; border: 1px solid var(--border-strong); line-height: 1.2;
+  }
+  .dash-la-status-tag.t-travel   { background: var(--travel-bg);   color: var(--travel-text);   border-color: var(--travel-border); }
+  .dash-la-status-tag.t-ooo      { background: var(--ooo-bg);      color: var(--ooo-text);      border-color: var(--ooo-border); }
+  .dash-la-status-tag.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
+  .dash-la-status-tag.t-family   { background: var(--family-bg);   color: var(--family-text);   border-color: var(--family-border); }
+  .dash-la-status-tag.t-vpres    { background: var(--vpres-bg);    color: var(--vpres-text);    border-color: var(--vpres-border); }
+  .dash-la-status-tag.t-mis      { background: var(--mis-bg);      color: var(--mis-text);      border-color: var(--mis-border); }
+  .dash-cal-cell.status-travel   { border-left: 3px solid var(--travel-border); background: rgba(235, 243, 252, 0.35); }
+  .dash-cal-cell.status-ooo      { border-left: 3px solid var(--ooo-border); background: rgba(247, 230, 230, 0.35); }
+  .dash-cal-cell.status-vacation { border-left: 3px solid var(--vacation-border); background: rgba(227, 245, 238, 0.4); }
+  .dash-cal-cell.status-family   { border-left: 3px solid var(--family-border); background: rgba(245, 240, 250, 0.4); }
+  .dash-cal-cell.status-vpres    { border-left: 3px solid var(--vpres-border); background: rgba(241, 233, 255, 0.4); }
+  .dash-cal-cell.status-mis      { border-left: 3px solid var(--mis-border); background: rgba(240, 240, 240, 0.5); }
 
   /* ── PROJECT PLATES (HOME) ── */
   .dash-projects-intro {
@@ -1337,6 +1388,61 @@ function flightChipHTML(fl, key) {
 function cellFlightChipHTML(fl) {
   const route = fl.originCode && fl.destCode ? ` ${fl.originCode}→${fl.destCode}` : '';
   return `<div class="cell-flight-chip">✈ ${fl.flightNum||'?'}${route}</div>`;
+}
+
+/** Human-readable day label for Home “Coming up” list */
+function dashRelativeDayLabel(date) {
+  const k = dkFromDate(date);
+  if (k === dkFromDate(today)) return 'Today';
+  const tmr = new Date(today);
+  tmr.setDate(tmr.getDate() + 1);
+  if (k === dkFromDate(tmr)) return 'Tomorrow';
+  return `${DAYS[date.getDay()]}, ${MONTHS_SHORT[date.getMonth()]} ${date.getDate()}`;
+}
+
+/** Sortable rows: events + flights for the next N days (inclusive of today). */
+function dashBuildUpcomingList(maxDaysInclusive, maxItems) {
+  const raw = [];
+  for (let i = 0; i <= maxDaysInclusive; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const key = dkFromDate(d);
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    getEventsForDay(d).forEach(ev => {
+      let ms = dayStart;
+      if (ev.startTime) {
+        const p = /^(\d{1,2}):(\d{2})/.exec(String(ev.startTime).trim());
+        if (p) ms += (+p[1] * 60 + +p[2]) * 60000;
+      }
+      raw.push({
+        sort: ms,
+        key,
+        date: d,
+        label: ev.title || 'Untitled',
+        timeStr: formatTimeRange(ev.startTime, ev.endTime),
+        recurring: !!ev._recurring,
+      });
+    });
+    getFlights(key).forEach(fl => {
+      let ms = dayStart;
+      if (fl.departureTime) {
+        const p = /^(\d{1,2}):(\d{2})/.exec(String(fl.departureTime).trim());
+        if (p) ms += (+p[1] * 60 + +p[2]) * 60000;
+      }
+      const route = fl.originCode && fl.destCode ? `${fl.originCode}→${fl.destCode}` : '';
+      const label = `✈ ${fl.flightNum || 'Flight'}${route ? ' ' + route : ''}`;
+      raw.push({
+        sort: ms,
+        key,
+        date: d,
+        label,
+        timeStr: fl.departureTime ? formatTime(String(fl.departureTime).trim().slice(0, 5)) : '',
+        recurring: false,
+      });
+    });
+  }
+  raw.sort((a, b) => a.sort - b.sort);
+  return raw.slice(0, maxItems);
 }
 
 // ── LIST VIEW ────────────────────────────────────────────────────────────────
@@ -2188,20 +2294,39 @@ function renderDashboard() {
     const key = dkFromDate(d);
     const evs = getEventsForDay(d);
     const fls = getFlights(key);
+    const st = DATA[key + '-status'] || null;
     const chips = evs.map(ev => chipHTML(ev, key)).join('') + fls.map(fl => flightChipHTML(fl, key)).join('');
+    const statusTagFwd = st
+      ? `<span class="dash-la-status-tag t-${st}">${STATUS_LABELS[st]}</span>`
+      : '';
+    const rowHas = chips.length > 0 || st;
     const isWknd = d.getDay() === 0 || d.getDay() === 6;
+    const stCls = st ? ` status-${st}` : '';
     lookaheadParts.push(`
-      <div class="dash-cal-cell ${isWknd ? 'is-weekend' : ''}" data-dk="${key}">
+      <div class="dash-cal-cell ${isWknd ? 'is-weekend' : ''}${stCls}" data-dk="${key}">
         <div class="dash-cal-cell-hdr">
           <span class="dash-la-dow">${DAYS[d.getDay()]}</span>
           <span class="dash-la-num">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span>
         </div>
         <div class="dash-la-body">
-          <div class="event-chips dash-la-chips">${chips ? chips : `<span class="dash-la-empty">—</span>`}</div>
+          <div class="event-chips dash-la-chips">${rowHas ? chips + statusTagFwd : `<span class="dash-la-empty">—</span>`}</div>
         </div>
       </div>
     `);
   }
+
+  const upcomingItems = dashBuildUpcomingList(28, 28);
+  const upcomingRowsHtml = upcomingItems.length
+    ? upcomingItems.map(it => {
+        const recurSpan = it.recurring ? '<span class="dash-upcoming-recur">↻</span> ' : '';
+        return `
+    <div class="dash-upcoming-row" data-dk="${esc(it.key)}" role="button" tabindex="0">
+      <span class="dash-upcoming-when">${escHtml(dashRelativeDayLabel(it.date))}</span>
+      <span class="dash-upcoming-time">${it.timeStr ? escHtml(it.timeStr) : '—'}</span>
+      <span class="dash-upcoming-title">${recurSpan}${escHtml(it.label)}</span>
+    </div>`;
+      }).join('')
+    : '';
 
   const statusTag = dayStatus
     ? `<div class="dash-today-tag t-${dayStatus}">${STATUS_LABELS[dayStatus]}</div>`
@@ -2263,9 +2388,17 @@ function renderDashboard() {
       </div>
     </div>
 
+    <div class="dash-section dash-upcoming">
+      <h3 class="dash-section-title">Coming up</h3>
+      <p class="dash-cal-caption">Your Field Planner calendar, today through the next four weeks—appointments and flights, soonest first.</p>
+      ${upcomingRowsHtml
+        ? `<div class="dash-upcoming-list">${upcomingRowsHtml}</div>`
+        : `<p class="dash-upcoming-empty">Nothing scheduled in the next four weeks. Tap <strong>+ Appointment</strong> on Today, or open <strong>Month</strong> and add events there.</p>`}
+    </div>
+
     <div class="dash-section">
       <h3 class="dash-section-title">Next 10 days</h3>
-      <p class="dash-cal-caption">Ten calendar days ahead of today · tap a cell to open it (events open from chips)</p>
+      <p class="dash-cal-caption">Quick visual pass; tap a day to open it.</p>
       <div class="dash-cal-grid">${lookaheadParts.join('')}</div>
     </div>
   `;
@@ -2300,6 +2433,16 @@ function renderDashboard() {
   host.querySelectorAll('.dash-cal-cell').forEach(row => {
     row.addEventListener('click', (e) => {
       if (e.target.closest('.event-chip') || e.target.closest('.flight-chip')) return;
+      const key = row.dataset.dk;
+      if (!key) return;
+      const parts = key.split('-');
+      const y = +parts[0], mo = +parts[1], d = +parts[2];
+      openModal(key, new Date(y, mo - 1, d));
+    });
+  });
+
+  host.querySelectorAll('.dash-upcoming-row').forEach(row => {
+    row.addEventListener('click', () => {
       const key = row.dataset.dk;
       if (!key) return;
       const parts = key.split('-');
