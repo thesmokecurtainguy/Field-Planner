@@ -651,6 +651,72 @@
   .todo-row.is-done .todo-text { text-decoration: line-through; color: var(--text-faint); }
   .todo-row.is-done { opacity: 0.7; }
 
+  /* ══════════ DASHBOARD (HOME) ══════════ */
+  #dashboard-view {
+    display: none; flex-direction: column; gap: 24px; max-width: 880px; margin: 0 auto;
+  }
+  .dash-hero {
+    text-align: center; padding: 8px 0 4px;
+  }
+  .dash-hero-date {
+    font-family: 'DM Serif Display', serif; font-size: clamp(26px, 4vw, 34px);
+    letter-spacing: -0.5px; color: var(--text); line-height: 1.15;
+  }
+  .dash-hero-sub {
+    font-size: 14px; font-weight: 300; color: var(--text-muted); margin-top: 8px;
+  }
+  .dash-section {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px 22px;
+  }
+  .dash-section-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .dash-section-head .dash-section-title { margin-bottom: 0; }
+  .dash-section-title {
+    font-family: 'DM Serif Display', serif; font-size: 20px; letter-spacing: -0.3px;
+    color: var(--text); margin-bottom: 14px;
+  }
+  .dash-add-appt {
+    background: var(--text); color: #fff; border: none; border-radius: var(--radius-sm);
+    padding: 7px 14px; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500; white-space: nowrap;
+  }
+  .dash-add-appt:hover { opacity: 0.9; }
+  .dash-note-preview {
+    font-size: 13px; color: var(--text-muted); margin-bottom: 10px;
+    padding: 8px 12px; background: var(--surface2); border-radius: var(--radius-sm); line-height: 1.4;
+  }
+  .dash-today-tag {
+    display: inline-block; font-size: 10px; font-weight: 500; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 3px 10px; border-radius: 20px;
+    margin-bottom: 10px; border: 1px solid var(--border-strong);
+  }
+  .dash-today-tag.t-travel   { background: var(--travel-bg);   color: var(--travel-text);   border-color: var(--travel-border); }
+  .dash-today-tag.t-ooo      { background: var(--ooo-bg);      color: var(--ooo-text);      border-color: var(--ooo-border); }
+  .dash-today-tag.t-vacation { background: var(--vacation-bg); color: var(--vacation-text); border-color: var(--vacation-border); }
+  .dash-today-tag.t-family   { background: var(--family-bg);   color: var(--family-text);   border-color: var(--family-border); }
+  .dash-today-tag.t-vpres    { background: var(--vpres-bg);    color: var(--vpres-text);    border-color: var(--vpres-border); }
+  .dash-today-tag.t-mis      { background: var(--mis-bg);      color: var(--mis-text);      border-color: var(--mis-border); }
+
+  .dash-today-blocks { cursor: pointer; border-radius: var(--radius-sm); margin: -4px; padding: 4px;
+    transition: background 0.12s;
+  }
+  .dash-today-blocks:hover { background: rgba(0,0,0,0.03); }
+  .dash-la-day {
+    display: grid; grid-template-columns: 118px 1fr; gap: 14px;
+    padding: 12px 0; border-bottom: 1px solid var(--border); align-items: start;
+  }
+  .dash-la-day:last-child { border-bottom: none; }
+  .dash-la-day.is-weekend .dash-la-dow { color: var(--text-faint); }
+  .dash-la-date { display: flex; flex-direction: column; gap: 2px; }
+  .dash-la-dow { font-size: 11px; font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-muted); }
+  .dash-la-num { font-size: 14px; font-weight: 500; color: var(--text); }
+  .dash-la-chips .event-chip, .dash-la-chips .flight-chip { margin-bottom: 3px; }
+  .dash-la-empty { font-size: 13px; color: var(--text-faint); font-style: italic; font-weight: 300; }
+
   @media (max-width: 640px) {
     header { padding: 0 1rem; }
     .brand span { display: none; }
@@ -663,6 +729,8 @@
     .event-field.full { grid-column: span 1; }
     .recur-options { grid-template-columns: 1fr; }
     .recur-day-picker { grid-column: span 1; }
+    .dash-la-day { grid-template-columns: 1fr; gap: 8px; }
+    .dash-la-date { flex-direction: row; align-items: baseline; gap: 8px; }
   }
 </style>
 </head>
@@ -673,7 +741,8 @@
   <div class="header-controls">
     <button id="sync-btn" onclick="forcePush()" title="Sync status — click to force save">⟳ Sync</button>
     <div class="view-toggle">
-      <button class="view-btn active" id="btn-grid"      onclick="setView('grid')">Calendar</button>
+      <button class="view-btn active" id="btn-dashboard" onclick="setView('dashboard')">Home</button>
+      <button class="view-btn"        id="btn-grid"      onclick="setView('grid')">Calendar</button>
       <button class="view-btn"        id="btn-list"      onclick="setView('list')">List</button>
       <button class="view-btn"        id="btn-week-grid" onclick="setView('week-grid')">Week Cal</button>
       <button class="view-btn"        id="btn-week-list" onclick="setView('week-list')">Week List</button>
@@ -702,6 +771,7 @@
 </div>
 
 <main>
+  <div id="dashboard-view"></div>
   <div id="grid-view"></div>
   <div id="list-view"></div>
   <div id="week-grid-view"></div>
@@ -756,7 +826,7 @@ today.setHours(0,0,0,0);
 let cur          = { year: today.getFullYear(), month: today.getMonth() };
 let curWeekStart = getWeekStart(today);
 let curDay       = new Date(today);
-let currentView  = 'grid';
+let currentView  = 'dashboard';
 let modalDk      = null;
 let modalDate    = null;
 let modalEvents  = [];
@@ -1776,10 +1846,16 @@ function handleOverlayClick(e) {
 }
 
 // ── CORE ─────────────────────────────────────────────────────────────────────
-const VIEW_IDS = ['grid','list','week-grid','week-list','day','todo'];
+const VIEW_IDS = ['dashboard','grid','list','week-grid','week-list','day','todo'];
+
+function refreshTodoViews() {
+  if (currentView === 'todo') renderTodo();
+  else if (currentView === 'dashboard') renderDashboard();
+}
 
 function setView(v) {
   currentView = v;
+  document.getElementById('dashboard-view').style.display = v==='dashboard' ? 'flex'  : 'none';
   document.getElementById('grid-view').style.display      = v==='grid'      ? 'block' : 'none';
   document.getElementById('list-view').style.display      = v==='list'      ? 'flex'  : 'none';
   document.getElementById('week-grid-view').style.display = v==='week-grid' ? 'block' : 'none';
@@ -1787,10 +1863,10 @@ function setView(v) {
   document.getElementById('day-view').style.display       = v==='day'       ? 'block' : 'none';
   document.getElementById('todo-view').style.display      = v==='todo'      ? 'flex'  : 'none';
 
-  // Hide the calendar chrome (title, prev/next, legend) in the Todo view.
-  const isTodo = v === 'todo';
-  document.querySelector('.month-nav').style.display = isTodo ? 'none' : '';
-  document.querySelector('.legend').style.display    = isTodo ? 'none' : '';
+  // Hide the calendar chrome (title, prev/next, legend) on Home and Todo.
+  const minimalChrome = v === 'todo' || v === 'dashboard';
+  document.querySelector('.month-nav').style.display = minimalChrome ? 'none' : '';
+  document.querySelector('.legend').style.display    = minimalChrome ? 'none' : '';
 
   VIEW_IDS.forEach(id => {
     document.getElementById('btn-'+id).className = 'view-btn' + (v===id ? ' active' : '');
@@ -1831,16 +1907,142 @@ function render() {
   } else if (currentView === 'day') {
     document.getElementById('month-title').textContent =
       curDay.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric', year:'numeric'});
-  } else {
+  } else if (currentView !== 'dashboard' && currentView !== 'todo') {
     document.getElementById('month-title').textContent = `${MONTHS[cur.month]} ${cur.year}`;
   }
 
-  if      (currentView === 'grid')      renderGrid();
+  if      (currentView === 'dashboard') renderDashboard();
+  else if (currentView === 'grid')      renderGrid();
   else if (currentView === 'list')      renderList();
   else if (currentView === 'week-grid') renderWeekGrid();
   else if (currentView === 'week-list') renderWeekList();
   else if (currentView === 'day')       renderDay();
   else if (currentView === 'todo')      renderTodo();
+}
+
+function openDashboardTodayModal() {
+  openModal(dkFromDate(today), new Date(today.getFullYear(), today.getMonth(), today.getDate()), true);
+}
+
+function renderDashboard() {
+  const host = document.getElementById('dashboard-view');
+  if (!host) return;
+
+  const todos = getTodos();
+  const active = todos.filter(t => !t.done);
+  const top3 = active.slice(0, 3);
+  const top3Html = [1, 2, 3].map(r => renderTop3Card(r, top3[r - 1])).join('');
+
+  const todayKey = dkFromDate(today);
+  const todayEvents = getEventsForDay(today);
+  const todayFlights = getFlights(todayKey);
+  const todayNote = (DATA[todayKey] || '').trim();
+  const dayStatus = DATA[todayKey + '-status'] || null;
+
+  const todayChips = todayEvents.map(ev => chipHTML(ev, todayKey)).join('') +
+    todayFlights.map(fl => flightChipHTML(fl, todayKey)).join('');
+
+  const lookaheadParts = [];
+  for (let i = 1; i <= 10; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const key = dkFromDate(d);
+    const evs = getEventsForDay(d);
+    const fls = getFlights(key);
+    const chips = evs.map(ev => chipHTML(ev, key)).join('') + fls.map(fl => flightChipHTML(fl, key)).join('');
+    const isWknd = d.getDay() === 0 || d.getDay() === 6;
+    lookaheadParts.push(`
+      <div class="dash-la-day ${isWknd ? 'is-weekend' : ''}" data-dk="${key}">
+        <div class="dash-la-date">
+          <span class="dash-la-dow">${DAYS[d.getDay()]}</span>
+          <span class="dash-la-num">${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}</span>
+        </div>
+        <div class="dash-la-body">
+          <div class="event-chips dash-la-chips">${chips ? chips : `<span class="dash-la-empty">Nothing scheduled</span>`}</div>
+        </div>
+      </div>
+    `);
+  }
+
+  const statusTag = dayStatus
+    ? `<div class="dash-today-tag t-${dayStatus}">${STATUS_LABELS[dayStatus]}</div>`
+    : '';
+
+  host.innerHTML = `
+    <div class="dash-hero">
+      <div class="dash-hero-date">${today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
+      <p class="dash-hero-sub">Your day at a glance</p>
+    </div>
+
+    <div class="dash-section">
+      <h3 class="dash-section-title">Top 3 priorities</h3>
+      <div class="top3">${top3Html}</div>
+      <div class="todo-add-wrap">
+        <div class="todo-add">
+          <input id="dashboard-todo-add-input" class="todo-add-input" type="text"
+                 placeholder="Add a task and press Enter…"
+                 oninput="updateTodoMatches(this.value)"
+                 onkeydown="if(event.key==='Enter'){addTodo();}">
+          <button type="button" class="todo-add-btn" onclick="addTodo()">Add task</button>
+        </div>
+        <div class="todo-matches" id="dashboard-todo-matches"></div>
+      </div>
+    </div>
+
+    <div class="dash-section dash-today">
+      <div class="dash-section-head">
+        <h3 class="dash-section-title">Today on the calendar</h3>
+        <button type="button" class="dash-add-appt" onclick="openDashboardTodayModal()">+ Add appointment</button>
+      </div>
+      ${statusTag}
+      ${todayNote ? `<div class="dash-note-preview">${escHtml(todayNote)}</div>` : ''}
+      <div class="dash-today-blocks" data-dk="${todayKey}">
+        <div class="event-chips">${todayChips ? todayChips : `<span class="dash-la-empty">No events or flights today — click here to add a note or event</span>`}</div>
+      </div>
+    </div>
+
+    <div class="dash-section">
+      <h3 class="dash-section-title">Next 10 days</h3>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Starting tomorrow · click a day to open it</p>
+      <div class="dash-lookahead">${lookaheadParts.join('')}</div>
+    </div>
+  `;
+
+  function wireChips(root) {
+    root.querySelectorAll('.event-chip, .flight-chip').forEach(chip => {
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = chip.dataset.key;
+        if (!key) return;
+        const parts = key.split('-');
+        const y = +parts[0], mo = +parts[1], d = +parts[2];
+        openModal(key, new Date(y, mo - 1, d));
+      });
+    });
+  }
+
+  wireChips(host);
+
+  const todayBlock = host.querySelector('.dash-today-blocks');
+  if (todayBlock) {
+    todayBlock.addEventListener('click', () => {
+      const key = todayBlock.dataset.dk;
+      const parts = key.split('-');
+      const y = +parts[0], mo = +parts[1], d = +parts[2];
+      openModal(key, new Date(y, mo - 1, d));
+    });
+  }
+
+  host.querySelectorAll('.dash-la-day').forEach(row => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.event-chip') || e.target.closest('.flight-chip')) return;
+      const key = row.dataset.dk;
+      if (!key) return;
+      const parts = key.split('-');
+      const y = +parts[0], mo = +parts[1], d = +parts[2];
+      openModal(key, new Date(y, mo - 1, d));
+    });
+  });
 }
 
 // ── TODO LIST ────────────────────────────────────────────────────────────────
@@ -1858,7 +2060,7 @@ function saveTodos(arr) { DATA[TODOS_KEY] = JSON.stringify(arr); saveData(DATA);
 function newTodoId()    { return 't-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,7); }
 
 function addTodo() {
-  const input = document.getElementById('todo-add-input');
+  const input = document.getElementById('todo-add-input') || document.getElementById('dashboard-todo-add-input');
   if (!input) return;
   const text = input.value.trim();
   if (!text) return;
@@ -1869,9 +2071,12 @@ function addTodo() {
   todos.splice(activeCount, 0, item);
   saveTodos(todos);
   input.value = '';
-  renderTodo();
+  refreshTodoViews();
   // Keep focus on the input for fast successive entry.
-  requestAnimationFrame(() => { const el = document.getElementById('todo-add-input'); if (el) el.focus(); });
+  requestAnimationFrame(() => {
+    const el = document.getElementById('todo-add-input') || document.getElementById('dashboard-todo-add-input');
+    if (el) el.focus();
+  });
 }
 
 function updateTodoText(id, text) {
@@ -1898,13 +2103,13 @@ function toggleTodoDone(id) {
     todos.splice(activeCount, 0, item);
   }
   saveTodos(todos);
-  renderTodo();
+  refreshTodoViews();
 }
 
 function deleteTodo(id) {
   const todos = getTodos().filter(x => x.id !== id);
   saveTodos(todos);
-  renderTodo();
+  refreshTodoViews();
 }
 
 function moveTodo(id, dir) {
@@ -1918,7 +2123,7 @@ function moveTodo(id, dir) {
   const [item] = todos.splice(idx, 1);
   todos.splice(target, 0, item);
   saveTodos(todos);
-  renderTodo();
+  refreshTodoViews();
 }
 
 function promoteTodoToTop(id) {
@@ -1928,13 +2133,13 @@ function promoteTodoToTop(id) {
   const [item] = todos.splice(idx, 1);
   todos.unshift(item);
   saveTodos(todos);
-  renderTodo();
+  refreshTodoViews();
 }
 
 function clearCompletedTodos() {
   const todos = getTodos().filter(x => !x.done);
   saveTodos(todos);
-  renderTodo();
+  refreshTodoViews();
 }
 
 function escHtml(s) {
@@ -2087,7 +2292,7 @@ function renderTodo() {
 }
 
 function updateTodoMatches(query) {
-  const box = document.getElementById('todo-matches');
+  const box = document.getElementById('todo-matches') || document.getElementById('dashboard-todo-matches');
   if (!box) return;
   const q = (query || '').trim().toLowerCase();
   if (q.length < 2) { box.classList.remove('is-open'); box.innerHTML = ''; return; }
@@ -2145,14 +2350,7 @@ function toggleTodoSection(which) {
   if (el) el.classList.toggle('collapsed');
 }
 
-// Initial state — Calendar is primary
-document.getElementById('grid-view').style.display      = 'block';
-document.getElementById('list-view').style.display      = 'none';
-document.getElementById('week-grid-view').style.display = 'none';
-document.getElementById('week-list-view').style.display = 'none';
-document.getElementById('day-view').style.display       = 'none';
-document.getElementById('todo-view').style.display      = 'none';
-render();
+setView('dashboard');
 </script>
 </body>
 </html>
