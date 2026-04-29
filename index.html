@@ -500,6 +500,41 @@
     padding: 8px 22px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
   }
 
+  /* Plate peek modal + dashboard top-3 picker */
+  .plate-modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+    z-index: 205; align-items: center; justify-content: center; padding: 1rem;
+  }
+  .plate-modal-overlay.open { display: flex; }
+  .plate-modal-inner { width: 420px; max-width: 100%; max-height: 82vh; overflow-y: auto; }
+  #plate-modal-body ul { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  #plate-modal-body li {
+    font-size: 13px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--surface2); line-height: 1.35;
+  }
+  .plate-modal-li-meta { font-size: 10px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
+
+  .dash-top3-picker {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin: -8px 0 12px;
+  }
+  .dash-top3-picker label {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted);
+  }
+  .dash-top3-picker select {
+    font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 7px 10px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); min-width: 160px;
+  }
+  .dash-plates-controls { display:flex; align-items:center; gap:14px; flex-wrap: wrap; margin: 10px 0 8px; }
+  .dash-plates-controls label { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+  .todo-import-select {
+    font-size: 11px; font-family: 'DM Sans', sans-serif;
+    padding: 3px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text-muted); cursor: pointer; flex-shrink: 0;
+    min-width: 44px;
+  }
+
   /* ── SYNC STATUS ── */
   #sync-btn {
     font-size: 11px; font-family: 'DM Sans', sans-serif; font-weight: 500;
@@ -524,7 +559,7 @@
   .top3 { display: flex; flex-direction: column; gap: 12px; }
   .top3-card {
     background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius);
-    padding: 18px 20px; display: grid; grid-template-columns: 52px 1fr auto; align-items: center; gap: 14px;
+    padding: 18px 20px; display: grid; grid-template-columns: 52px 52px 1fr auto; align-items: center; gap: 14px;
     transition: box-shadow 0.15s, transform 0.15s, opacity 0.2s;
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   }
@@ -543,6 +578,18 @@
   .top3-card.rank-2 .top3-rank { color: var(--vpres-text); }
   .top3-card.rank-3 .top3-rank { color: var(--vacation-text); }
   .top3-card.placeholder .top3-rank { color: var(--text-faint); }
+
+  .top3-import {
+    display: flex; align-items: center; justify-content: center; align-self: stretch;
+    min-height: 40px;
+  }
+  .todo-import-cell {
+    display: flex; align-items: center; justify-content: center; min-width: 0;
+  }
+  .todo-import-static {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+    color: var(--text-muted); text-align: center; min-width: 28px;
+  }
 
   .todo-body { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .todo-check {
@@ -640,7 +687,7 @@
   .todo-section-body { display: flex; flex-direction: column; gap: 4px; }
 
   .todo-row {
-    display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px;
+    display: grid; grid-template-columns: 26px 50px 1fr auto; align-items: center; gap: 10px;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: 8px 12px;
   }
@@ -717,8 +764,9 @@
     .dash-two-col { grid-template-columns: 1fr; }
   }
   .dash-col-top3 .dash-section-title { margin-bottom: 8px; }
-  .dash-col-top3 .top3 .top3-card { padding: 12px 14px; gap: 10px; }
+  .dash-col-top3 .top3 .top3-card { grid-template-columns: 40px 48px minmax(0, 1fr) auto; padding: 12px 14px; gap: 10px; }
   .dash-col-top3 .top3 .top3-rank { font-size: 34px; }
+  .dash-col-top3 .top3 .top3-import { min-height: 36px; }
   .dash-col-today .dash-today { padding: 16px 18px; }
 
   /* Next 10 days — calendar strip */
@@ -768,8 +816,14 @@
   }
   .proj-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+  }
+  @media (max-width: 1180px) {
+    .proj-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 720px) {
+    .proj-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   .proj-card {
     --plate: #378ADD;
@@ -944,6 +998,17 @@
   </div>
 </div>
 
+<div class="plate-modal-overlay" id="plate-modal-overlay" onclick="if(event.target===this)closePlateModal()">
+  <div class="modal plate-modal-inner" onclick="event.stopPropagation()">
+    <div class="modal-title" id="plate-modal-title"></div>
+    <div id="plate-modal-body"></div>
+    <div class="modal-footer" style="margin-top:12px;justify-content:space-between;flex-wrap:wrap;gap:10px;display:flex;">
+      <button type="button" class="todo-btn" onclick="openTodoFromPlateModal()">Open Todo view…</button>
+      <button type="button" class="modal-save" onclick="closePlateModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const DAYS         = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const DAYS_SHORT   = ['Su','Mo','Tu','We','Th','Fr','Sa'];
@@ -959,6 +1024,7 @@ let cur          = { year: today.getFullYear(), month: today.getMonth() };
 let curWeekStart = getWeekStart(today);
 let curDay       = new Date(today);
 let currentView  = 'dashboard';
+let plateModalPid = null;
 let modalDk      = null;
 let modalDate    = null;
 let modalEvents  = [];
@@ -1002,6 +1068,36 @@ function saveData(d) {
   setSyncStatus('unsaved', '● Unsaved');
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(pushToRemote, 800);
+}
+
+/** Home dashboard prefs — top-level keys on DATA, POSTed to `/api/data` with the rest of the blob. */
+const DATA_KEY_DASH_TOP3 = 'fp-dash-top3-project';
+const DATA_KEY_DASH_SHOW_HIDDEN = 'fp-dash-show-hidden-plates';
+
+let _fpDashPrefsMigrated = false;
+/** Copies legacy standalone-localStorage values into DATA once, then removes the loose keys. */
+function migrateDashPrefsIntoData() {
+  if (_fpDashPrefsMigrated) return;
+  let changed = false;
+  try {
+    const t = localStorage.getItem(DATA_KEY_DASH_TOP3);
+    if (t && (DATA[DATA_KEY_DASH_TOP3] == null || DATA[DATA_KEY_DASH_TOP3] === '')) {
+      DATA[DATA_KEY_DASH_TOP3] = t;
+      changed = true;
+    }
+    if (localStorage.getItem(DATA_KEY_DASH_SHOW_HIDDEN) === '1' && DATA[DATA_KEY_DASH_SHOW_HIDDEN] !== '1') {
+      DATA[DATA_KEY_DASH_SHOW_HIDDEN] = '1';
+      changed = true;
+    }
+    if (changed) {
+      try {
+        localStorage.removeItem(DATA_KEY_DASH_TOP3);
+        localStorage.removeItem(DATA_KEY_DASH_SHOW_HIDDEN);
+      } catch (_) {}
+      saveData(DATA);
+    }
+  } catch (e) { console.warn('[FP] dash prefs migrate', e); }
+  _fpDashPrefsMigrated = true;
 }
 
 async function pushToRemote() {
@@ -1071,6 +1167,7 @@ window.addEventListener('beforeunload', () => {
     }
 
     saveLocal(DATA);
+    migrateDashPrefsIntoData();
     render();
 
     if (needsPush) {
@@ -1080,6 +1177,8 @@ window.addEventListener('beforeunload', () => {
     }
   } catch(e) {
     console.warn('[FP] Remote fetch failed, using local cache:', e);
+    migrateDashPrefsIntoData();
+    render();
     setSyncStatus('error', '⚠ Offline');
   }
 })();
@@ -2061,10 +2160,17 @@ function renderDashboard() {
   if (!host) return;
 
   const todosAll = getTodos();
-  const activeGen = todosAll.filter(t => !t.done && t.projectId === GENERAL_PID);
-  const top3 = activeGen.slice(0, 3);
+  const dashPid = getDashboardTop3ProjectId();
+  const dashProject = getProjects().find(p => p.id === dashPid) || { name: 'General' };
+  const dashName = dashProject.name || 'Plate';
+  const activeDash = sortActiveTodosForPlate(dashPid, todosAll);
+  const top3 = activeDash.slice(0, 3);
   const top3Html = [1, 2, 3].map(r => renderTop3Card(r, top3[r - 1])).join('');
   const projectPlatesHtml = renderProjectCardsHtml();
+
+  const plateSelectOpts = getProjects().map(p =>
+    `<option value="${esc(p.id)}"${p.id === dashPid ? ' selected' : ''}>${escHtml(p.name)}</option>`
+  ).join('');
 
   const todayKey = dkFromDate(today);
   const todayEvents = getEventsForDay(today);
@@ -2109,15 +2215,28 @@ function renderDashboard() {
 
     <div class="dash-section dash-projects">
       <h3 class="dash-section-title">Projects · spinning plates</h3>
+      <div class="dash-plates-controls">
+        <label>
+          <input type="checkbox" id="dash-show-hidden-plates" ${getDashShowHidden() ? 'checked' : ''} onchange="onDashShowHiddenChange(this)" />
+          Show hidden plates
+        </label>
+      </div>
       <p class="dash-projects-intro">Each plate uses your todos for progress.
-        Tap <strong>Worked today</strong> after you spend time. <strong>Color</strong> dots set the plate accent · ⚙ for upkeep and alert timing.</p>
+        Tap a plate to peek at tasks, or tap <strong>Worked today</strong> after you spend time.
+        <strong>Color</strong> dots set the accent · ⚙ upkeep and alerts · Hide removes a plate from Home without deleting tasks.</p>
       <div class="proj-grid">${projectPlatesHtml}</div>
     </div>
 
     <div class="dash-two-col">
       <div class="dash-section dash-col-top3">
-      <h3 class="dash-section-title">Top 3 priorities <span style="font-size:13px;color:var(--text-muted);font-weight:400;font-family:'DM Sans',sans-serif">(General)</span></h3>
-      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Quick capture here goes to <strong>General</strong>. Switch projects in the Todo tab.</p>
+      <h3 class="dash-section-title">Top 3 priorities</h3>
+      <div class="dash-top3-picker">
+        <label for="dash-top3-plate-select">Plate</label>
+        <select id="dash-top3-plate-select" onchange="onDashboardTop3ProjectChange(this.value)" aria-label="Which plate drives top 3 and quick add">
+          ${plateSelectOpts}
+        </select>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin:-6px 0 12px;">Quick capture and this top three use <strong>${escHtml(dashName)}</strong>. Order: A→B→C priority, then your list order. Full lists live in Todo.</p>
       <div class="top3">${top3Html}</div>
       <div class="todo-add-wrap">
         <div class="todo-add">
@@ -2191,8 +2310,10 @@ function renderDashboard() {
 }
 
 // ── TODO LIST + PROJECTS ─────────────────────────────────────────────────────
-// DATA['__todos__'] — { id, text, done, createdAt, projectId }
-// DATA['__projects__'] — { id, name, maintenanceHint, lastTouchAt, staleAfterDays, sort, plateColor }
+// DATA['__todos__'] JSON array — { id, text, done, createdAt, projectId, importance?: 'a'|'b'|'c' }
+// DATA['__projects__'] JSON array — { id, name, maintenanceHint, lastTouchAt, staleAfterDays, sort, plateColor, dashboardHidden?: boolean }
+// DATA['fp-dash-top3-project'] string — project id for Home Top 3 + quick add (synced)
+// DATA['fp-dash-show-hidden-plates'] '1' — show hidden plates on Home (synced)
 // Global list order is priority; move/reorder is scoped within the same project + done state.
 
 const TODOS_KEY          = '__todos__';
@@ -2230,6 +2351,13 @@ function ensureProjectsMigrated() {
         plateFix = true;
       }
     });
+    let dashHiddenFix = false;
+    projects.forEach(p => {
+      if (p && (p.dashboardHidden === undefined || p.dashboardHidden === null)) {
+        p.dashboardHidden = false;
+        dashHiddenFix = true;
+      }
+    });
     DATA[PROJECTS_KEY] = JSON.stringify(projects);
 
     let todos = [];
@@ -2239,7 +2367,7 @@ function ensureProjectsMigrated() {
       if (t && !t.projectId) { t.projectId = GENERAL_PID; changedTodos = true; }
     }
     if (changedTodos) DATA[TODOS_KEY] = JSON.stringify(todos);
-    if (addedGeneral || changedTodos || plateFix) saveData(DATA);
+    if (addedGeneral || changedTodos || plateFix || dashHiddenFix) saveData(DATA);
     else saveLocal(DATA);
   } catch (e) { console.warn('[FP] project migrate', e); }
 }
@@ -2302,6 +2430,7 @@ function addProjectFromPrompt() {
     staleAfterDays: 7,
     sort: projects.length,
     plateColor: PLATE_HEX_DEFAULT[projects.length % PLATE_HEX_DEFAULT.length],
+    dashboardHidden: false,
   });
   saveProjects(projects);
   selectedTodoProjectId = id;
@@ -2358,8 +2487,149 @@ function deleteProject(pid) {
   refreshTodoViews();
 }
 
+function getDashShowHidden() {
+  migrateDashPrefsIntoData();
+  try { return DATA[DATA_KEY_DASH_SHOW_HIDDEN] === '1'; } catch (_) { return false; }
+}
+
+function onDashShowHiddenChange(el) {
+  try {
+    if (el.checked) DATA[DATA_KEY_DASH_SHOW_HIDDEN] = '1';
+    else delete DATA[DATA_KEY_DASH_SHOW_HIDDEN];
+  } catch (_) {}
+  saveData(DATA);
+  refreshTodoViews();
+}
+
+function getDashboardTop3ProjectId() {
+  migrateDashPrefsIntoData();
+  try {
+    const v = DATA[DATA_KEY_DASH_TOP3];
+    if (typeof v === 'string' && v.length && getProjects().some(p => p.id === v)) return v;
+  } catch (_) {}
+  return GENERAL_PID;
+}
+
+function onDashboardTop3ProjectChange(val) {
+  DATA[DATA_KEY_DASH_TOP3] = val;
+  saveData(DATA);
+  refreshTodoViews();
+}
+
+function getProjectsForDashboardGrid() {
+  const showHidden = getDashShowHidden();
+  return getProjects().filter(p => showHidden || !p.dashboardHidden);
+}
+
+function togglePlateDashboardHidden(pid, e) {
+  if (e) { e.preventDefault(); e.stopPropagation(); }
+  if (!pid || pid === GENERAL_PID) return;
+  const projects = getProjects();
+  const p = projects.find(x => x.id === pid);
+  if (!p) return;
+  p.dashboardHidden = !p.dashboardHidden;
+  saveProjects(projects);
+  refreshTodoViews();
+}
+
+function importanceTier(t) {
+  const k = ((t && t.importance) || '').toLowerCase();
+  if (k === 'a') return 0;
+  if (k === 'b') return 1;
+  if (k === 'c') return 2;
+  return 3;
+}
+
+/** Active todos for a project sorted A→B→C, then unrated (—), preserving list order among ties (global traversal order within project scope). */
+function sortActiveTodosForPlate(pid, allTodos) {
+  const full = allTodos || getTodos();
+  const order = [];
+  full.forEach(t => {
+    if (t.projectId === pid && !t.done) order.push(t);
+  });
+  return order.slice().sort((a, b) => {
+    const da = importanceTier(a), db = importanceTier(b);
+    if (da !== db) return da - db;
+    return order.indexOf(a) - order.indexOf(b);
+  });
+}
+
+function importancePickHtml(id, imp) {
+  const v = ((imp || '') + '').toLowerCase();
+  const sel = x => v === x ? ' selected' : '';
+  return `<select class="todo-import-select" aria-label="Importance" title="Priority A/B/C"
+    onchange="setTodoImportance(${JSON.stringify(id)}, this.value)">
+    <option value=""${sel('')}>–</option>
+    <option value="a"${sel('a')}>A</option>
+    <option value="b"${sel('b')}>B</option>
+    <option value="c"${sel('c')}>C</option>
+  </select>`;
+}
+
+function importanceDoneLabel(todo) {
+  const v = ((todo && todo.importance) || '').toUpperCase();
+  return `<span class="todo-import-static">${escHtml(v || '–')}</span>`;
+}
+
+function setTodoImportance(id, val) {
+  const raw = ((val || '') + '').toLowerCase().trim();
+  const tier = raw === '' || raw === 'a' || raw === 'b' || raw === 'c' ? raw : '';
+  const todos = getTodos();
+  const t = todos.find(x => x.id === id);
+  if (!t) return;
+  if (tier === '') delete t.importance;
+  else t.importance = tier;
+  saveTodos(todos);
+  if (t.projectId) touchProject(t.projectId);
+  refreshTodoViews();
+}
+
+function openPlateModal(pid) {
+  plateModalPid = pid;
+  const p = getProjects().find(x => x.id === pid);
+  if (!p) return;
+  const tt = document.getElementById('plate-modal-title');
+  const bd = document.getElementById('plate-modal-body');
+  if (!tt || !bd) return;
+  tt.textContent = p.name;
+  const all = getTodos();
+  const active = sortActiveTodosForPlate(pid, all);
+  const doneCount = all.filter(t => t.projectId === pid && t.done).length;
+  let html = '';
+  if (!active.length && !doneCount) {
+    html = '<p style="color:var(--text-muted);font-size:14px;line-height:1.45;">No tasks in this project yet.</p>';
+  } else {
+    if (active.length) {
+      html += '<div class="modal-section-label" style="margin-top:0">Active</div><ul>';
+      active.forEach(t => {
+        const lab = (t.importance || '').toUpperCase() || '—';
+        html += `<li><div class="plate-modal-li-meta">Priority ${escHtml(String(lab))}</div>${escHtml(t.text)}</li>`;
+      });
+      html += '</ul>';
+    }
+    if (doneCount) {
+      html += `<div class="modal-section-label"${active.length ? '' : ' style="margin-top:0"'}">Completed</div>`;
+      html += `<p style="font-size:12px;color:var(--text-muted); margin: 0;">${doneCount} done — open Todo view to manage.</p>`;
+    }
+  }
+  bd.innerHTML = html;
+  document.getElementById('plate-modal-overlay').classList.add('open');
+}
+
+function closePlateModal() {
+  plateModalPid = null;
+  document.getElementById('plate-modal-overlay')?.classList.remove('open');
+}
+
+function openTodoFromPlateModal() {
+  const id = plateModalPid;
+  if (!id) return;
+  closePlateModal();
+  openTodoForProject(id);
+}
+
 function getAddTodoProjectId() {
-  if (currentView === 'dashboard') return GENERAL_PID;
+  if (currentView === 'dashboard') return getDashboardTop3ProjectId();
   return selectedTodoProjectId || GENERAL_PID;
 }
 
@@ -2407,7 +2677,7 @@ function setProjectPlateColor(pid, hex) {
 
 /** Progress + plate cards on Home */
 function renderProjectCardsHtml() {
-  const projects = getProjects();
+  const projects = getProjectsForDashboardGrid();
   const allTodos = getTodos();
   return projects.map(p => {
     const scoped = allTodos.filter(t => t.projectId === p.id);
@@ -2435,8 +2705,11 @@ function renderProjectCardsHtml() {
 
     const safeHint = hint ? `<div class="proj-hint">${escHtml(hint)}</div>` : '';
 
+    const dashHiddenBadge = p.dashboardHidden ? `<span class="proj-badge proj-badge-muted">Hidden on Home</span>` : '';
+    const hideBtnLabel = p.dashboardHidden ? 'Show on Home' : 'Hide from Home';
+
     return `
-      <div class="proj-card ${stale ? 'is-stale' : ''}" data-project-id="${attrId}" style="--plate:${hx}">
+      <div class="proj-card ${stale ? 'is-stale' : ''}${p.dashboardHidden ? ' is-dash-hidden' : ''}" data-project-id="${attrId}" style="--plate:${hx}">
       <div class="proj-card-inner">
         <div class="proj-plate-row">
           <div class="proj-plate-svg-wrap" style="--plate:${hx}">
@@ -2446,6 +2719,7 @@ function renderProjectCardsHtml() {
           <div class="proj-plate-head">
             <div class="proj-card-top">
               <span class="proj-name">${escHtml(p.name)}</span>
+              ${dashHiddenBadge}
               ${stale ? '<span class="proj-badge">Needs attention</span>' : ''}
             </div>
           </div>
@@ -2455,9 +2729,11 @@ function renderProjectCardsHtml() {
         ${safeHint}
         <div class="proj-plate-swatches"><span>Color</span>${swatches}</div>
         <div class="proj-actions">
+          <button type="button" class="proj-btn proj-plate-peek" title="View tasks on this plate">Peek</button>
           <button type="button" class="proj-btn primary proj-plate-work">Worked today</button>
           <button type="button" class="proj-btn proj-plate-open">Open todos</button>
           <button type="button" class="proj-btn proj-plate-edit" title="Name, maintenance, color">⚙</button>
+          ${p.id !== GENERAL_PID ? `<button type="button" class="proj-btn proj-plate-hide" title="${p.dashboardHidden ? 'Show this plate on Home again' : 'Hide from Home (does not delete tasks)'}">${hideBtnLabel}</button>` : ''}
           ${p.id !== GENERAL_PID ? `<button type="button" class="proj-btn danger proj-plate-delete" title="Remove project (tasks → General)">Remove</button>` : ''}
         </div>
       </div>
@@ -2472,7 +2748,13 @@ function wireDashboardProjectCards(host) {
     if (!pid) return;
     card.querySelector('.proj-plate-work')?.addEventListener('click', () => projectWorkedToday(pid));
     card.querySelector('.proj-plate-open')?.addEventListener('click', () => openTodoForProject(pid));
+    card.querySelector('.proj-plate-peek')?.addEventListener('click', e => {
+      e.preventDefault();
+      e.stopPropagation();
+      openPlateModal(pid);
+    });
     card.querySelector('.proj-plate-edit')?.addEventListener('click', () => promptProjectSettings(pid));
+    card.querySelector('.proj-plate-hide')?.addEventListener('click', e => togglePlateDashboardHidden(pid, e));
     card.querySelector('.proj-plate-delete')?.addEventListener('click', e => {
       e.preventDefault();
       e.stopPropagation();
@@ -2484,6 +2766,11 @@ function wireDashboardProjectCards(host) {
         e.stopPropagation();
         setProjectPlateColor(pid, btn.dataset.hex);
       });
+    });
+
+    card.addEventListener('click', e => {
+      if (e.target.closest('button')) return;
+      openPlateModal(pid);
     });
   });
 }
@@ -2605,9 +2892,11 @@ function renderTop3Card(rank, todo) {
   if (placeholder) classes.push('placeholder');
   if (todo && todo.done) classes.push('is-done');
   const safeId = todo ? escHtml(todo.id) : '';
+  const impHtml = placeholder ? '' : importancePickHtml(todo.id, todo.importance);
   return `
     <div class="${classes.join(' ')}">
       <div class="top3-rank">${rank}</div>
+      <div class="top3-import">${impHtml}</div>
       <div class="todo-body">
         ${placeholder
           ? `<div class="todo-text" style="color:var(--text-faint); font-style:italic; font-weight:300;">Add a task below…</div>`
@@ -2631,9 +2920,11 @@ function renderTop3Card(rank, todo) {
 function renderTodoRow(todo, displayRank, totalActive) {
   const safeId = escHtml(todo.id);
   const isDone = todo.done;
+  const impHtml = isDone ? importanceDoneLabel(todo) : importancePickHtml(todo.id, todo.importance);
   return `
     <div class="todo-row ${isDone ? 'is-done' : ''}">
       <div class="todo-rank-num">${isDone ? '✓' : '#' + displayRank}</div>
+      <div class="todo-import-cell">${impHtml}</div>
       <div class="todo-body">
         <button class="todo-check ${isDone ? 'is-done' : ''}" title="Mark ${isDone ? 'not done' : 'done'}"
                 onclick="toggleTodoDone('${safeId}')">${isDone ? '✓' : ''}</button>
@@ -2644,7 +2935,7 @@ function renderTodoRow(todo, displayRank, totalActive) {
       <div class="todo-actions">
         ${isDone ? '' : `
           <button class="todo-btn" title="Promote to #1"   onclick="promoteTodoToTop('${safeId}')">⇈</button>
-          <button class="todo-btn" title="Move up"         onclick="moveTodo('${safeId}', -1)" ${displayRank===4?'':''}>▲</button>
+          <button class="todo-btn" title="Move up"         onclick="moveTodo('${safeId}', -1)">▲</button>
           <button class="todo-btn" title="Move down"       onclick="moveTodo('${safeId}',  1)" ${displayRank===totalActive?'disabled':''}>▼</button>
         `}
         <button class="todo-btn danger" title="Delete" onclick="deleteTodo('${safeId}')">✕</button>
@@ -2671,11 +2962,13 @@ function renderTodo() {
 
   const curName = escHtml((projects.find(p => p.id === pid) || {}).name || 'Project');
 
-  const todos = getTodos().filter(t => t.projectId === pid);
-  const active    = todos.filter(t => !t.done);
-  const done      = todos.filter(t => t.done);
-  const top3      = active.slice(0, 3);
-  const backlog   = active.slice(3);
+  const todosAll = getTodos();
+  const activeOrdered = sortActiveTodosForPlate(pid, todosAll);
+  const top3 = activeOrdered.slice(0, 3);
+  const backlog = activeOrdered.slice(3);
+
+  const todos = todosAll.filter(t => t.projectId === pid);
+  const done = todos.filter(t => t.done);
 
   if (localStorage.getItem(TODOS_BACKLOG_OPEN) === null) {
     localStorage.setItem(TODOS_BACKLOG_OPEN, '1');
@@ -2695,7 +2988,7 @@ function renderTodo() {
         <div class="todo-section-count" style="color:var(--text-faint); background:none;">priority order</div>
       </div>
       <div class="todo-section-body">
-        ${backlog.map((t, i) => renderTodoRow(t, i + 4, active.length)).join('')}
+        ${backlog.map((t, i) => renderTodoRow(t, i + 4, activeOrdered.length)).join('')}
       </div>
     </div>
   ` : '';
@@ -2710,12 +3003,12 @@ function renderTodo() {
         <button class="todo-btn" onclick="event.stopPropagation(); clearCompletedTodos()">Clear all</button>
       </div>
       <div class="todo-section-body">
-        ${done.map(t => renderTodoRow(t, 0, active.length)).join('')}
+        ${done.map(t => renderTodoRow(t, 0, activeOrdered.length)).join('')}
       </div>
     </div>
   ` : '';
 
-  const introHtml = active.length === 0 ? `
+  const introHtml = activeOrdered.length === 0 ? `
     <div class="todo-intro">
       Top three for ${curName}?
       <span class="todo-empty-hint">Add your first task for this project below. The top of the list is what you focus on.</span>
@@ -2727,7 +3020,7 @@ function renderTodo() {
   const toolbarHtml = todos.length ? `
     <div class="todo-toolbar">
       <div class="todo-toolbar-stats">
-        <span><b>${active.length}</b> active</span>
+        <span><b>${activeOrdered.length}</b> active</span>
         ${backlog.length ? `<span><b>${backlog.length}</b> in backlog</span>` : ''}
         ${done.length ? `<span><b>${done.length}</b> done</span>` : ''}
       </div>
@@ -2771,12 +3064,11 @@ function updateTodoMatches(query) {
 
   let scopePid = GENERAL_PID;
   if (currentView === 'todo') scopePid = selectedTodoProjectId || GENERAL_PID;
-  else if (currentView === 'dashboard') scopePid = GENERAL_PID;
+  else if (currentView === 'dashboard') scopePid = getDashboardTop3ProjectId();
 
   const todos    = getTodos().filter(t => t.projectId === scopePid);
-  const active   = todos.filter(t => !t.done);
-  const done     = todos.filter(t => t.done);
-  const inTop    = new Set(active.slice(0, 3).map(t => t.id));
+  const sortedActive = sortActiveTodosForPlate(scopePid, getTodos());
+  const inTop    = new Set(sortedActive.slice(0, 3).map(t => t.id));
 
   const hits = todos
     .map(t => ({ t, score: t.text.toLowerCase().includes(q) ? 1 : 0 }))

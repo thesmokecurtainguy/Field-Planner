@@ -1,7 +1,10 @@
 // Vercel Serverless Function — Upstash Redis REST API
 // Env vars: KV_REST_API_URL, KV_REST_API_TOKEN
-// Single key "fp-data" stores the entire JSON blob.
-
+// Redis key "fp-data" stores one JSON object (POST from client). Typical keys:
+//   YYYY-MM-DD-day notes, *-events / *-flights, __recurring__, __todos__, __projects__,
+//   fp-dash-top3-project, fp-dash-show-hidden-plates, ...
+// __todos__ / __projects__ hold JSON.stringify(arrays); todo objects may include importance,
+// project objects may include dashboardHidden — both sync with the blob.
 const REDIS_KEY = 'fp-data';
 
 async function redis(method, ...args) {
