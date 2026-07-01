@@ -2272,7 +2272,6 @@ function renderDashboard() {
   const activeDash = sortActiveTodosForPlate(dashPid, todosAll);
   const top3 = activeDash.slice(0, 3);
   const top3Html = [1, 2, 3].map(r => renderTop3Card(r, top3[r - 1])).join('');
-  const projectPlatesHtml = renderProjectCardsHtml();
 
   const plateSelectOpts = getProjects().map(p =>
     `<option value="${esc(p.id)}"${p.id === dashPid ? ' selected' : ''}>${escHtml(p.name)}</option>`
@@ -2336,20 +2335,6 @@ function renderDashboard() {
     <div class="dash-hero">
       <div class="dash-hero-date">${today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
       <p class="dash-hero-sub">Your day at a glance</p>
-    </div>
-
-    <div class="dash-section dash-projects">
-      <h3 class="dash-section-title">Projects · spinning plates</h3>
-      <div class="dash-plates-controls">
-        <label>
-          <input type="checkbox" id="dash-show-hidden-plates" ${getDashShowHidden() ? 'checked' : ''} onchange="onDashShowHiddenChange(this)" />
-          Show hidden plates
-        </label>
-      </div>
-      <p class="dash-projects-intro">Each plate uses your todos for progress.
-        Tap a plate to peek at tasks, or tap <strong>Worked today</strong> after you spend time.
-        <strong>Color</strong> dots set the accent · ⚙ upkeep and alerts · Hide removes a plate from Home without deleting tasks.</p>
-      <div class="proj-grid">${projectPlatesHtml}</div>
     </div>
 
     <div class="dash-two-col">
@@ -2417,8 +2402,6 @@ function renderDashboard() {
   }
 
   wireChips(host);
-
-  wireDashboardProjectCards(host);
 
   const todayBlock = host.querySelector('.dash-today-blocks');
   if (todayBlock) {
