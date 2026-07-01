@@ -237,7 +237,7 @@
   #week-grid-view .grid-week .grid-cell { min-height: 200px; }
 
   /* ══════════ DAY VIEW ══════════ */
-  #day-view { display: none; max-width: 680px; margin: 0 auto; }
+  #day-view { display: none; max-width: 900px; margin: 0 auto; }
 
   .dv-hero {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
@@ -301,6 +301,100 @@
     border-radius: 4px; padding: 2px 8px; margin-top: 6px;
   }
   .dv-no-events { font-size: 13px; color: var(--text-faint); font-style: italic; }
+
+  /* Day / week schedule grid (4am–6pm, 30 min) */
+  .sched-wrap { margin-top: 1.25rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+  .sched-title { font-family: 'DM Serif Display', serif; font-size: 18px; margin-bottom: 10px; }
+  .sched-grid {
+    display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 0;
+    border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden;
+    background: var(--surface);
+  }
+  .sched-grid.week-mode { grid-template-columns: 52px repeat(7, minmax(0, 1fr)); overflow-x: auto; }
+  .sched-time-gutter { background: var(--surface2); border-right: 1px solid var(--border); }
+  .sched-time-gutter .sched-slot { padding: 0 6px; justify-content: flex-end; }
+  .sched-col { position: relative; border-right: 1px solid var(--border); min-width: 0; }
+  .sched-col:last-child { border-right: none; }
+  .sched-col-inner { position: relative; display: grid; grid-template-rows: repeat(var(--sched-rows, 28), 22px); }
+  .sched-slot {
+    border-bottom: 1px solid var(--border); font-size: 9px; color: var(--text-faint);
+    display: flex; align-items: flex-start; padding: 2px 4px; min-height: 22px;
+  }
+  .sched-slot:nth-child(even) { background: rgba(0,0,0,0.015); }
+  .sched-items {
+    position: absolute; inset: 0; display: grid;
+    grid-template-rows: repeat(var(--sched-rows, 28), 22px); pointer-events: none;
+  }
+  .sched-item-wrap { grid-column: 1; display: flex; min-height: 0; z-index: 1; pointer-events: none; }
+  .sched-item-wrap .sched-item { flex: 1; min-height: 0; }
+  .sched-item {
+    margin: 1px 3px; border-radius: 4px; padding: 2px 5px; font-size: 10px; line-height: 1.25;
+    overflow: hidden; pointer-events: auto; cursor: pointer; border: 1px solid var(--border-strong);
+    background: var(--surface2); color: var(--text);
+  }
+  .sched-item.is-event { background: rgba(55, 138, 221, 0.12); border-color: rgba(55, 138, 221, 0.35); }
+  .sched-item.is-flight { background: rgba(155, 89, 208, 0.12); border-color: rgba(155, 89, 208, 0.35); }
+  .sched-item.is-block { background: rgba(29, 158, 117, 0.14); border-color: rgba(29, 158, 117, 0.4); }
+  .sched-item.is-overdue {
+    background: var(--ooo-bg); border-color: var(--ooo-border); color: var(--ooo-text);
+    animation: fp-overdue-pulse 1.4s ease-in-out infinite;
+  }
+  .sched-item-title { font-weight: 500; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sched-item-meta { font-size: 9px; opacity: 0.85; }
+  .sched-col-hdr {
+    text-align: center; font-size: 10px; font-weight: 600; padding: 6px 4px;
+    background: var(--surface2); border-bottom: 1px solid var(--border); color: var(--text-muted);
+  }
+  .sched-col-hdr.is-today { color: var(--travel-text); }
+
+  /* Task chips on calendar + today footer */
+  .task-chip {
+    font-size: 10px; border-radius: 4px; padding: 2px 6px; line-height: 1.35;
+    border: 1px dashed var(--border-strong); background: rgba(29, 158, 117, 0.08);
+    color: var(--text); word-break: break-word; cursor: pointer;
+  }
+  .task-chip.is-overdue {
+    border-style: solid; border-color: var(--ooo-border); background: var(--ooo-bg);
+    color: var(--ooo-text); animation: fp-overdue-pulse 1.4s ease-in-out infinite;
+  }
+  .task-chip.is-due-past { opacity: 0.65; font-style: italic; }
+  .task-chip-more { font-size: 9px; color: var(--text-muted); padding: 1px 0; }
+  .dash-today-tasks {
+    margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .dash-today-tasks-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .dash-today-tasks.is-shame .dash-today-tasks-label { color: var(--ooo-text); }
+  .dash-upcoming-toggle {
+    display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 12px; color: var(--text-muted);
+  }
+  .dash-upcoming-task { border-left: 3px solid rgba(29, 158, 117, 0.45); }
+  .dash-upcoming-task.is-overdue { border-left-color: var(--ooo-border); }
+
+  @keyframes fp-overdue-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(216, 90, 48, 0.35); }
+    50% { box-shadow: 0 0 0 3px rgba(216, 90, 48, 0.2); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .sched-item.is-overdue, .task-chip.is-overdue, .todo-row.is-overdue {
+      animation: none;
+    }
+  }
+
+  .todo-due-input, .todo-block-start, .todo-block-end, .todo-block-date {
+    font-family: 'DM Sans', sans-serif; font-size: 11px; padding: 2px 4px;
+    border: 1px solid var(--border); border-radius: 4px; background: var(--surface);
+    color: var(--text); max-width: 100%;
+  }
+  .todo-due-cell, .todo-block-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding-top: 4px; }
+  .todo-block-cell label { font-size: 9px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; }
+  .todo-block-times { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .todo-row.is-overdue { border-color: var(--ooo-border); background: linear-gradient(90deg, var(--ooo-bg) 0%, var(--surface) 120px); animation: fp-overdue-pulse 1.4s ease-in-out infinite; }
+  .todo-row.has-sched-cols { grid-template-columns: 26px 50px minmax(0, 1fr) 96px 108px auto; }
+  .todo-row.has-sched-cols.has-project-pick { grid-template-columns: 26px 50px minmax(0, 1fr) 96px 108px 118px auto; }
 
   /* ══════════ MODAL ══════════ */
   .modal-overlay {
@@ -1122,6 +1216,11 @@ function saveData(d) {
 /** Home dashboard prefs — top-level keys on DATA, POSTed to `/api/data` with the rest of the blob. */
 const DATA_KEY_DASH_TOP3 = 'fp-dash-top3-project';
 const DATA_KEY_DASH_SHOW_HIDDEN = 'fp-dash-show-hidden-plates';
+const DATA_KEY_DASH_UPCOMING_TASKS = 'fp-dash-upcoming-tasks';
+
+const SCHED_START_H = 4;
+const SCHED_END_H = 18;
+const SCHED_SLOT_MIN = 30;
 
 let _fpDashPrefsMigrated = false;
 /** Copies legacy standalone-localStorage values into DATA once, then removes the loose keys. */
@@ -1138,10 +1237,16 @@ function migrateDashPrefsIntoData() {
       DATA[DATA_KEY_DASH_SHOW_HIDDEN] = '1';
       changed = true;
     }
+    const u = localStorage.getItem(DATA_KEY_DASH_UPCOMING_TASKS);
+    if (u === '1' && DATA[DATA_KEY_DASH_UPCOMING_TASKS] !== '1') {
+      DATA[DATA_KEY_DASH_UPCOMING_TASKS] = '1';
+      changed = true;
+    }
     if (changed) {
       try {
         localStorage.removeItem(DATA_KEY_DASH_TOP3);
         localStorage.removeItem(DATA_KEY_DASH_SHOW_HIDDEN);
+        localStorage.removeItem(DATA_KEY_DASH_UPCOMING_TASKS);
       } catch (_) {}
       saveData(DATA);
     }
@@ -1275,7 +1380,7 @@ function migrateWeekLocationsToDays() {
 function cellDayMetaHtml(key) {
   const loc = getDayLocation(key).trim();
   const note = (DATA[key] || '').trim();
-  let html = '';
+  let html = taskChipsHtmlForDay(key, 2);
   if (loc) html += `<div class="cell-loc">${escHtml(loc)}</div>`;
   if (note) html += `<div class="cell-note">${escHtml(note)}</div>`;
   return html;
@@ -1291,6 +1396,346 @@ function bindDayFieldInputs(root) {
       else if (field === 'note') { DATA[k] = e.target.value; saveData(DATA); }
     });
   });
+}
+
+function dkToDateInput(dkKey) {
+  if (!dkKey) return '';
+  const p = dkKey.split('-');
+  if (p.length !== 3) return '';
+  return `${p[0]}-${String(+p[1] + 1).padStart(2, '0')}-${p[2]}`;
+}
+
+function dateInputToDk(val) {
+  if (!val) return '';
+  const p = val.split('-');
+  if (p.length !== 3) return '';
+  return `${p[0]}-${String(+p[1] - 1).padStart(2, '0')}-${p[2]}`;
+}
+
+function compareDayKeys(a, b) { return String(a).localeCompare(String(b)); }
+function isDayKeyBefore(a, b) { return compareDayKeys(a, b) < 0; }
+
+function isTodoOverdue(t) {
+  return !!(t && !t.done && t.dueBy && isDayKeyBefore(t.dueBy, dkFromDate(today)));
+}
+
+function getDashUpcomingTasks() {
+  migrateDashPrefsIntoData();
+  try { return DATA[DATA_KEY_DASH_UPCOMING_TASKS] === '1'; } catch (_) { return false; }
+}
+
+function onDashUpcomingTasksChange(el) {
+  try {
+    if (el.checked) DATA[DATA_KEY_DASH_UPCOMING_TASKS] = '1';
+    else delete DATA[DATA_KEY_DASH_UPCOMING_TASKS];
+  } catch (_) {}
+  saveData(DATA);
+  refreshTodoViews();
+}
+
+function dashActiveTodosRemain() {
+  const pid = getDashboardTop3ProjectId();
+  return sortActiveTodosForPlate(pid, getTodos()).length > 0;
+}
+
+function timeToMinutes(t) {
+  if (!t) return null;
+  const p = /^(\d{1,2}):(\d{2})/.exec(String(t).trim());
+  if (!p) return null;
+  return (+p[1]) * 60 + (+p[2]);
+}
+
+function scheduleSlotLabels() {
+  const out = [];
+  for (let h = SCHED_START_H; h < SCHED_END_H; h++) {
+    for (let m = 0; m < 60; m += SCHED_SLOT_MIN) {
+      out.push({
+        h, m,
+        label: formatTime(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`),
+      });
+    }
+  }
+  return out;
+}
+
+function slotIndexFromMinutes(mins) {
+  const start = SCHED_START_H * 60;
+  const end = SCHED_END_H * 60;
+  if (mins == null || mins < start || mins >= end) return -1;
+  return Math.floor((mins - start) / SCHED_SLOT_MIN);
+}
+
+function todoCalendarItemsForDay(dayKey) {
+  const todayKey = dkFromDate(today);
+  return getTodos().filter(t => {
+    if (!t || t.done || !t.dueBy) return false;
+    if (t.dueBy === dayKey) return true;
+    if (isTodoOverdue(t) && dayKey === todayKey) return true;
+    return false;
+  }).sort((a, b) => {
+    if (isTodoOverdue(a) && !isTodoOverdue(b)) return -1;
+    if (!isTodoOverdue(a) && isTodoOverdue(b)) return 1;
+    return compareDayKeys(a.dueBy, b.dueBy);
+  });
+}
+
+function taskChipsHtmlForDay(dayKey, maxVisible) {
+  const tasks = todoCalendarItemsForDay(dayKey);
+  if (!tasks.length) return '';
+  const todayKey = dkFromDate(today);
+  const cap = maxVisible == null ? tasks.length : maxVisible;
+  const visible = tasks.slice(0, cap);
+  const extra = tasks.length - visible.length;
+  const chips = visible.map(t => {
+    const overdue = isTodoOverdue(t);
+    const pastDue = t.dueBy === dayKey && isDayKeyBefore(dayKey, todayKey);
+    const cls = ['task-chip', overdue && dayKey === todayKey ? 'is-overdue' : '', pastDue ? 'is-due-past' : ''].filter(Boolean).join(' ');
+    const label = overdue && dayKey === todayKey
+      ? `⚠ ${t.text} (was due ${dkToDateInput(t.dueBy)})`
+      : t.text;
+    return `<div class="${cls}" data-todo-id="${esc(t.id)}" title="Open Todo">${escHtml(label)}</div>`;
+  }).join('');
+  const more = extra > 0 ? `<div class="task-chip-more">+${extra} more task${extra === 1 ? '' : 's'}</div>` : '';
+  return `<div class="cell-tasks">${chips}${more}</div>`;
+}
+
+function setTodoDueBy(id, dateInputVal) {
+  const todos = getTodos();
+  const t = todos.find(x => x.id === id);
+  if (!t) return;
+  const dk = dateInputToDk(dateInputVal);
+  if (dk) t.dueBy = dk;
+  else delete t.dueBy;
+  saveTodos(todos);
+  refreshTodoViews();
+}
+
+function setTodoBlockField(id, field, val) {
+  const todos = getTodos();
+  const t = todos.find(x => x.id === id);
+  if (!t) return;
+  if (field === 'blockDate') {
+    const dk = dateInputToDk(val);
+    if (dk) t.blockDate = dk;
+    else delete t.blockDate;
+  } else if (field === 'blockStart' || field === 'blockEnd') {
+    if (val) {
+      t[field] = val;
+      if (!t.blockDate) t.blockDate = t.dueBy || dkFromDate(today);
+    } else delete t[field];
+  }
+  if (!t.blockStart && !t.blockEnd) delete t.blockDate;
+  saveTodos(todos);
+  refreshTodoViews();
+}
+
+function assignTodoBlockFromSlot(todoId, dayKey, timeStr) {
+  const todos = getTodos();
+  const t = todos.find(x => x.id === todoId);
+  if (!t) return;
+  t.blockDate = dayKey;
+  t.blockStart = timeStr;
+  const sm = timeToMinutes(timeStr);
+  const em = sm != null ? sm + 60 : null;
+  t.blockEnd = em != null
+    ? `${String(Math.floor(em / 60)).padStart(2, '0')}:${String(em % 60).padStart(2, '0')}`
+    : '';
+  saveTodos(todos);
+  refreshTodoViews();
+}
+
+function openTodoFromTaskChip(todoId) {
+  const t = getTodos().find(x => x.id === todoId);
+  if (t && t.projectId) {
+    selectedTodoProjectId = t.projectId;
+    try { localStorage.setItem('fp-todo-project', t.projectId); } catch (_) {}
+  }
+  setView('todo');
+}
+
+function scheduleItemsForDay(dayKey, date) {
+  const items = [];
+  getEventsForDay(date).forEach(ev => {
+    const sm = timeToMinutes(ev.startTime);
+    let em = timeToMinutes(ev.endTime);
+    if (sm != null && (em == null || em <= sm)) em = sm + 30;
+    items.push({ kind: 'event', sm, em, ev });
+  });
+  getFlights(dayKey).forEach(fl => {
+    const sm = timeToMinutes(fl.departureTime);
+    items.push({ kind: 'flight', sm, em: sm != null ? sm + 30 : null, fl });
+  });
+  getTodos().forEach(t => {
+    if (t.done) return;
+    if (t.blockDate === dayKey && t.blockStart) {
+      const sm = timeToMinutes(t.blockStart);
+      let em = timeToMinutes(t.blockEnd);
+      if (sm != null && (em == null || em <= sm)) em = sm + 60;
+      items.push({ kind: 'block', sm, em, t });
+    }
+  });
+  if (dayKey === dkFromDate(today)) {
+    getTodos().forEach(t => {
+      if (t.done || !isTodoOverdue(t)) return;
+      if (t.blockDate === dayKey && t.blockStart) return;
+      items.push({ kind: 'overdue', sm: 8 * 60, em: 8 * 60 + 30, t });
+    });
+  }
+  return items;
+}
+
+function renderScheduleItemMarkup(item) {
+  if (item.kind === 'event') {
+    const ev = item.ev;
+    return `<div class="sched-item is-event" title="${escHtml(ev.title || 'Event')}">
+      <span class="sched-item-title">${escHtml(ev.title || 'Event')}</span>
+      <span class="sched-item-meta">${escHtml(formatTimeRange(ev.startTime, ev.endTime))}</span>
+    </div>`;
+  }
+  if (item.kind === 'flight') {
+    const fl = item.fl;
+    return `<div class="sched-item is-flight"><span class="sched-item-title">✈ ${escHtml(fl.flightNum || 'Flight')}</span></div>`;
+  }
+  if (item.kind === 'block') {
+    const t = item.t;
+    return `<div class="sched-item is-block" data-todo-id="${esc(t.id)}" title="Work block">
+      <span class="sched-item-title">${escHtml(t.text)}</span>
+      <span class="sched-item-meta">${escHtml(formatTimeRange(t.blockStart, t.blockEnd))}</span>
+    </div>`;
+  }
+  const t = item.t;
+  return `<div class="sched-item is-overdue" data-todo-id="${esc(t.id)}" title="Overdue">
+    <span class="sched-item-title">⚠ ${escHtml(t.text)}</span>
+    <span class="sched-item-meta">Due ${escHtml(dkToDateInput(t.dueBy))}</span>
+  </div>`;
+}
+
+function buildScheduleColumn(dayKey, date, opts) {
+  const slots = scheduleSlotLabels();
+  const rows = slots.length;
+  const hdr = opts && opts.header
+    ? `<div class="sched-col-hdr${isToday(date) ? ' is-today' : ''}">${escHtml(opts.header)}</div>`
+    : '';
+  let slotsHtml = '';
+  slots.forEach((s, i) => {
+    slotsHtml += `<div class="sched-slot" data-dk="${esc(dayKey)}" data-time="${String(s.h).padStart(2, '0')}:${String(s.m).padStart(2, '0')}"><span class="sched-time">${i % 2 === 0 ? s.label : ''}</span></div>`;
+  });
+  let itemsHtml = '';
+  scheduleItemsForDay(dayKey, date).forEach(item => {
+    const si = slotIndexFromMinutes(item.sm);
+    if (si < 0) return;
+    let ei = item.em != null ? slotIndexFromMinutes(item.em) : si + 1;
+    if (ei <= si) ei = si + 1;
+    const span = Math.min(ei - si, rows - si);
+    itemsHtml += `<div class="sched-item-wrap" style="grid-row:${si + 1} / span ${span}">${renderScheduleItemMarkup(item)}</div>`;
+  });
+  return `${hdr}<div class="sched-col-inner" style="--sched-rows:${rows}">${slotsHtml}<div class="sched-items">${itemsHtml}</div></div>`;
+}
+
+function buildScheduleTimeGutter() {
+  const slots = scheduleSlotLabels();
+  const rows = slots.length;
+  let html = `<div class="sched-col-inner" style="--sched-rows:${rows}">`;
+  slots.forEach((s, i) => {
+    html += `<div class="sched-slot"><span class="sched-time">${i % 2 === 0 ? s.label : ''}</span></div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+function wireScheduleGrid(root) {
+  root.querySelectorAll('.sched-slot[data-dk]').forEach(slot => {
+    slot.addEventListener('click', () => {
+      const dk = slot.dataset.dk;
+      const time = slot.dataset.time;
+      if (!dk || !time) return;
+      const active = getTodos().filter(t => !t.done);
+      if (!active.length) return;
+      const names = active.slice(0, 12).map((t, i) => `${i + 1}. ${t.text.slice(0, 40)}`).join('\n');
+      const pick = prompt(`Block time ${time} — enter task number:\n${names}`);
+      if (pick == null || pick.trim() === '') return;
+      const idx = parseInt(pick, 10) - 1;
+      if (isNaN(idx) || idx < 0 || idx >= active.length) return;
+      assignTodoBlockFromSlot(active[idx].id, dk, time);
+    });
+  });
+  root.querySelectorAll('.sched-item[data-todo-id], .task-chip[data-todo-id]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      openTodoFromTaskChip(el.dataset.todoId);
+    });
+  });
+}
+
+function todoDueHtml(id, dueBy) {
+  return `<input type="date" class="todo-due-input" aria-label="Due date" value="${esc(dkToDateInput(dueBy))}"
+    onchange="setTodoDueBy(${JSON.stringify(id)}, this.value)">`;
+}
+
+function todoBlockHtml(id, t) {
+  const blockDate = t.blockDate || t.dueBy || '';
+  return `<label>Work</label>
+    <div class="todo-block-times">
+      <input type="time" class="todo-block-start" aria-label="Block start" value="${esc(t.blockStart || '')}"
+        onchange="setTodoBlockField(${JSON.stringify(id)}, 'blockStart', this.value)">
+      <span>–</span>
+      <input type="time" class="todo-block-end" aria-label="Block end" value="${esc(t.blockEnd || '')}"
+        onchange="setTodoBlockField(${JSON.stringify(id)}, 'blockEnd', this.value)">
+    </div>
+    <input type="date" class="todo-block-date" aria-label="Block date" title="Work block day"
+      value="${esc(dkToDateInput(blockDate))}"
+      onchange="setTodoBlockField(${JSON.stringify(id)}, 'blockDate', this.value)">`;
+}
+
+function todoDisplaySort(a, b, order) {
+  const oa = isTodoOverdue(a) ? 0 : (a.dueBy ? 1 : 2);
+  const ob = isTodoOverdue(b) ? 0 : (b.dueBy ? 1 : 2);
+  if (oa !== ob) return oa - ob;
+  if (a.dueBy && b.dueBy && a.dueBy !== b.dueBy) return compareDayKeys(a.dueBy, b.dueBy);
+  const da = importanceTier(a), db = importanceTier(b);
+  if (da !== db) return da - db;
+  return order.indexOf(a) - order.indexOf(b);
+}
+
+function dashTodayTasksHtml(todayKey) {
+  const overdue = getTodos().filter(t => isTodoOverdue(t));
+  const dueToday = getTodos().filter(t => !t.done && t.dueBy === todayKey && !isTodoOverdue(t));
+  if (!overdue.length && !dueToday.length) return '';
+  const shame = overdue.length > 0;
+  const rows = [
+    ...overdue.map(t => `<div class="task-chip is-overdue" data-todo-id="${esc(t.id)}">⚠ ${escHtml(t.text)} · was due ${escHtml(dkToDateInput(t.dueBy))}</div>`),
+    ...dueToday.map(t => `<div class="task-chip" data-todo-id="${esc(t.id)}">${escHtml(t.text)} · due today</div>`),
+  ].join('');
+  return `<div class="dash-today-tasks${shame ? ' is-shame' : ''}">
+    <div class="dash-today-tasks-label">${shame ? 'Overdue & due today' : 'Due today'}</div>
+    ${rows}
+  </div>`;
+}
+
+function dashUpcomingTaskRows(maxDays) {
+  if (!getDashUpcomingTasks() || dashActiveTodosRemain()) return [];
+  const todayKey = dkFromDate(today);
+  const rows = [];
+  getTodos().forEach(t => {
+    if (t.done || !t.dueBy || isTodoOverdue(t)) return;
+    if (isDayKeyBefore(t.dueBy, todayKey)) return;
+    const parts = t.dueBy.split('-');
+    const d = new Date(+parts[0], +parts[1], +parts[2]);
+    const diff = Math.round((d - today) / 86400000);
+    if (diff < 1 || diff > (maxDays || 28)) return;
+    rows.push({
+      sort: d.getTime() + 86400000 - 1,
+      key: t.dueBy,
+      date: d,
+      label: t.text,
+      timeStr: 'Due',
+      recurring: false,
+      isTask: true,
+      todoId: t.id,
+    });
+  });
+  rows.sort((a, b) => a.sort - b.sort);
+  return rows;
 }
 function dateStr(date) { return dkFromDate(date); }
 // Proper ISO date (YYYY-MM-DD with 1-indexed month) for use in <input type="date">
@@ -1600,7 +2045,10 @@ function renderGrid() {
         ${flights.map(fl => cellFlightChipHTML(fl)).join('')}
         ${status ? `<div class="cell-tag t-${status}">${STATUS_LABELS[status]}</div>` : ''}
       `;
-      cell.addEventListener('click', () => openModal(key, date));
+      cell.addEventListener('click', (e) => {
+        if (e.target.closest('.task-chip')) return;
+        openModal(key, date);
+      });
       weekRow.appendChild(cell);
     });
 
@@ -1608,6 +2056,12 @@ function renderGrid() {
     weeksEl.appendChild(weekRow);
   });
   el.appendChild(weeksEl);
+  el.querySelectorAll('.task-chip[data-todo-id]').forEach(chip => {
+    chip.addEventListener('click', e => {
+      e.stopPropagation();
+      openTodoFromTaskChip(chip.dataset.todoId);
+    });
+  });
 }
 
 // ── WEEK LIST VIEW ───────────────────────────────────────────────────────────
@@ -1659,41 +2113,34 @@ function renderWeekList() {
 // ── WEEK GRID VIEW ───────────────────────────────────────────────────────────
 function renderWeekGrid() {
   const dates = getWeekDates(curWeekStart);
-  const el = document.getElementById('week-grid-view'); el.innerHTML = '';
+  const el = document.getElementById('week-grid-view');
+  el.innerHTML = '';
 
-  const hdrs = document.createElement('div'); hdrs.className = 'grid-dow-headers';
+  const wrap = document.createElement('div');
+  wrap.className = 'sched-wrap';
+  wrap.innerHTML = '<div class="sched-title">Week schedule · 4am–6pm · click a slot to block task time</div>';
+
+  const grid = document.createElement('div');
+  grid.className = 'sched-grid week-mode';
+
+  const gutter = document.createElement('div');
+  gutter.className = 'sched-time-gutter';
+  gutter.innerHTML = buildScheduleTimeGutter();
+  grid.appendChild(gutter);
+
   dates.forEach(date => {
-    const h = document.createElement('div'); h.className = 'dow-hdr';
-    h.textContent = `${DAYS[date.getDay()]} ${date.getDate()}`; hdrs.appendChild(h);
+    const key = dkFromDate(date);
+    const col = document.createElement('div');
+    col.className = 'sched-col';
+    col.innerHTML = buildScheduleColumn(key, date, {
+      header: `${DAYS[date.getDay()]} ${date.getDate()}`,
+    });
+    grid.appendChild(col);
   });
-  el.appendChild(hdrs);
 
-  const row = document.createElement('div'); row.className = 'grid-week';
-  dates.forEach(date => {
-    const dow = date.getDay(); const key = dkFromDate(date);
-    const status = DATA[key+'-status']||null;
-    const note = DATA[key]||'';
-    const events = getEventsForDay(date);
-
-    const wgFlights = getFlights(key);
-    const cell = document.createElement('div');
-    let cls = 'grid-cell';
-    if (dow===0||dow===6) cls += ' weekend';
-    if (isToday(date))    cls += ' is-today';
-    if (isPast(date))     cls += ' past';
-    if (status)           cls += ' status-'+status;
-    cell.className = cls;
-    cell.innerHTML = `
-      <div class="cell-num">${date.getDate()}</div>
-      ${cellDayMetaHtml(key)}
-      ${events.map(ev => cellChipHTML(ev)).join('')}
-      ${wgFlights.map(fl => cellFlightChipHTML(fl)).join('')}
-      ${status ? `<div class="cell-tag t-${status}">${STATUS_LABELS[status]}</div>` : ''}
-    `;
-    cell.addEventListener('click', () => openModal(key, date));
-    row.appendChild(cell);
-  });
-  el.appendChild(row);
+  wrap.appendChild(grid);
+  el.appendChild(wrap);
+  wireScheduleGrid(el);
 }
 
 // ── DAY VIEW ─────────────────────────────────────────────────────────────────
@@ -1703,7 +2150,6 @@ function renderDay() {
   const dow  = date.getDay();
   const status = DATA[key+'-status']||null;
   const note   = DATA[key]||'';
-  const events = getEventsForDay(date);
   const loc    = getDayLocation(key);
 
   const el = document.getElementById('day-view'); el.innerHTML = '';
@@ -1740,68 +2186,40 @@ function renderDay() {
 
   el.appendChild(hero);
 
-  // Events section
-  const evSection = document.createElement('div'); evSection.className = 'dv-events-section';
+  const schedWrap = document.createElement('div');
+  schedWrap.className = 'sched-wrap';
+  schedWrap.innerHTML = '<div class="sched-title">Schedule · 4am–6pm · click a slot to block task time</div>';
+  const grid = document.createElement('div');
+  grid.className = 'sched-grid';
+  const gutter = document.createElement('div');
+  gutter.className = 'sched-time-gutter';
+  gutter.innerHTML = buildScheduleTimeGutter();
+  const col = document.createElement('div');
+  col.className = 'sched-col';
+  col.innerHTML = buildScheduleColumn(key, date);
+  grid.appendChild(gutter);
+  grid.appendChild(col);
+  schedWrap.appendChild(grid);
+  el.appendChild(schedWrap);
 
-  const evHeader = document.createElement('div'); evHeader.className = 'dv-events-header';
-  evHeader.innerHTML = `<div class="dv-events-title">Events</div>`;
-  const addBtn = document.createElement('button'); addBtn.className = 'dv-add-btn'; addBtn.textContent = '+ Add Event';
-  addBtn.addEventListener('click', () => openModal(key, date, true));
-  evHeader.appendChild(addBtn);
-  evSection.appendChild(evHeader);
-
-  if (!events.length) {
-    const empty = document.createElement('div'); empty.className = 'dv-no-events';
-    empty.textContent = 'No events — tap + Add Event to create one.';
-    evSection.appendChild(empty);
-  } else {
-    events.forEach(ev => {
-      const card = document.createElement('div');
-      card.className = 'dv-event-card' + (ev._recurring ? ' is-recurring' : '');
-
-      const timeStr = formatTimeRange(ev.startTime, ev.endTime);
-      const metaParts = [ev.business, ev.location].filter(Boolean).join(' · ');
-      const contactParts = [ev.contact, ev.email].filter(Boolean).join(' · ');
-
-      card.innerHTML = `
-        <div class="dv-ev-title">${ev.title||'Untitled'}</div>
-        ${timeStr     ? `<div class="dv-ev-time">${timeStr}</div>` : ''}
-        ${metaParts   ? `<div class="dv-ev-meta">${metaParts}</div>` : ''}
-        ${contactParts? `<div class="dv-ev-contact">${contactParts}</div>` : ''}
-        ${ev._recurring ? `<div class="dv-ev-recur">↻ ${recurDescription(ev)}</div>` : ''}
-      `;
-      card.style.cursor = 'pointer';
-      card.addEventListener('click', () => openModal(key, date));
-      evSection.appendChild(card);
-    });
+  const dueBlock = taskChipsHtmlForDay(key, null);
+  if (dueBlock) {
+    const dueEl = document.createElement('div');
+    dueEl.className = 'dv-events-section';
+    dueEl.innerHTML = `<div class="dv-events-title" style="margin-bottom:8px;">Due on this day</div>${dueBlock}`;
+    el.appendChild(dueEl);
   }
 
-  el.appendChild(evSection);
+  wireScheduleGrid(el);
 
-  // Flights section in day view
-  const dvFlights = getFlights(key);
-  if (dvFlights.length) {
-    const flSection = document.createElement('div'); flSection.className = 'dv-events-section';
-    const flHeader  = document.createElement('div'); flHeader.className = 'dv-events-header';
-    flHeader.innerHTML = `<div class="dv-events-title">✈ Flights</div>`;
-    flSection.appendChild(flHeader);
-    dvFlights.forEach(fl => {
-      const card = document.createElement('div'); card.className = 'dv-flight-card';
-      const route = fl.originCode && fl.destCode ? `${fl.originCode} → ${fl.destCode}` : '';
-      const airportRoute = [fl.originAirport, fl.destAirport].filter(Boolean).join(' → ');
-      const times = fl.departureTime && fl.arrivalTime
-        ? `${fl.departureTime} – ${fl.arrivalTime}`
-        : fl.departureTime || fl.arrivalTime || '';
-      card.innerHTML = `
-        <div class="dv-fl-title">✈ ${fl.flightNum||'Flight'}${fl.airline ? ` · ${fl.airline}` : ''}</div>
-        ${route      ? `<div class="dv-fl-route">${route}${airportRoute ? ` (${airportRoute})` : ''}</div>` : ''}
-        ${times      ? `<div class="dv-fl-times">${times}</div>` : ''}
-      `;
-      card.addEventListener('click', () => openModal(key, date));
-      flSection.appendChild(card);
-    });
-    el.appendChild(flSection);
-  }
+  const addRow = document.createElement('div');
+  addRow.style.marginTop = '12px';
+  const addBtn2 = document.createElement('button');
+  addBtn2.className = 'dv-add-btn';
+  addBtn2.textContent = '+ Add Event / Edit Day';
+  addBtn2.addEventListener('click', () => openModal(key, date, true));
+  addRow.appendChild(addBtn2);
+  el.appendChild(addRow);
 }
 
 // ── MODAL ────────────────────────────────────────────────────────────────────
@@ -2225,8 +2643,7 @@ function handleOverlayClick(e) {
 const VIEW_IDS = ['dashboard','grid','list','week-grid','week-list','day','todo'];
 
 function refreshTodoViews() {
-  if (currentView === 'todo') renderTodo();
-  else if (currentView === 'dashboard') renderDashboard();
+  render();
 }
 
 function setView(v) {
@@ -2355,9 +2772,20 @@ function renderDashboard() {
     `);
   }
 
-  const upcomingItems = dashBuildUpcomingList(28, 28);
+  const apptItems = dashBuildUpcomingList(28, 40);
+  const taskItems = dashUpcomingTaskRows(28);
+  const upcomingItems = [...apptItems, ...taskItems].sort((a, b) => a.sort - b.sort).slice(0, 28);
+  const upcomingTasksOn = getDashUpcomingTasks();
   const upcomingRowsHtml = upcomingItems.length
     ? upcomingItems.map(it => {
+        if (it.isTask) {
+          return `
+    <div class="dash-upcoming-row dash-upcoming-task" data-todo-id="${esc(it.todoId || '')}" role="button" tabindex="0">
+      <span class="dash-upcoming-when">${escHtml(dashRelativeDayLabel(it.date))}</span>
+      <span class="dash-upcoming-time">${escHtml(it.timeStr || 'Due')}</span>
+      <span class="dash-upcoming-title">☐ ${escHtml(it.label)}</span>
+    </div>`;
+        }
         const recurSpan = it.recurring ? '<span class="dash-upcoming-recur">↻</span> ' : '';
         return `
     <div class="dash-upcoming-row" data-dk="${esc(it.key)}" role="button" tabindex="0">
@@ -2412,12 +2840,17 @@ function renderDashboard() {
       <div class="dash-today-blocks" data-dk="${todayKey}">
         <div class="event-chips">${todayChips ? todayChips : `<span class="dash-la-empty">No events · click to edit the day</span>`}</div>
       </div>
+      ${dashTodayTasksHtml(todayKey)}
       </div>
     </div>
 
     <div class="dash-section dash-upcoming">
       <h3 class="dash-section-title">Coming up</h3>
-      <p class="dash-cal-caption">Your Field Planner calendar, today through the next four weeks—appointments and flights, soonest first.</p>
+      <label class="dash-upcoming-toggle">
+        <input type="checkbox" id="dash-upcoming-tasks" ${upcomingTasksOn ? 'checked' : ''} onchange="onDashUpcomingTasksChange(this)" />
+        Include due tasks (after today's active todos are cleared)
+      </label>
+      <p class="dash-cal-caption">Appointments and flights, soonest first${upcomingTasksOn ? '; tasks with due dates appended at the end' : ''}.</p>
       ${upcomingRowsHtml
         ? `<div class="dash-upcoming-list">${upcomingRowsHtml}</div>`
         : `<p class="dash-upcoming-empty">Nothing scheduled in the next four weeks. Tap <strong>+ Appointment</strong> on Today, or open <strong>Month</strong> and add events there.</p>`}
@@ -2468,6 +2901,8 @@ function renderDashboard() {
 
   host.querySelectorAll('.dash-upcoming-row').forEach(row => {
     row.addEventListener('click', () => {
+      const todoId = row.dataset.todoId;
+      if (todoId) { openTodoFromTaskChip(todoId); return; }
       const key = row.dataset.dk;
       if (!key) return;
       const parts = key.split('-');
@@ -2476,11 +2911,19 @@ function renderDashboard() {
     });
   });
 
+  wireScheduleGrid(host);
+  host.querySelectorAll('.task-chip[data-todo-id]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      openTodoFromTaskChip(el.dataset.todoId);
+    });
+  });
+
   initTodoTextareas(host);
 }
 
 // ── TODO LIST + PROJECTS ─────────────────────────────────────────────────────
-// DATA['__todos__'] JSON array — { id, text, done, createdAt, projectId, importance?: 'a'|'b'|'c' }
+// DATA['__todos__'] JSON array — { id, text, done, createdAt, projectId, importance?, dueBy?, blockDate?, blockStart?, blockEnd? }
 // DATA['__projects__'] JSON array — { id, name, maintenanceHint, lastTouchAt, staleAfterDays, sort, plateColor, dashboardHidden?: boolean }
 // DATA['fp-dash-top3-project'] string — project id for Home Top 3 + quick add (synced)
 // DATA['fp-dash-show-hidden-plates'] '1' — show hidden plates on Home (synced)
@@ -2722,11 +3165,7 @@ function sortActiveTodosForPlate(pid, allTodos) {
   full.forEach(t => {
     if (t.projectId === pid && !t.done) order.push(t);
   });
-  return order.slice().sort((a, b) => {
-    const da = importanceTier(a), db = importanceTier(b);
-    if (da !== db) return da - db;
-    return order.indexOf(a) - order.indexOf(b);
-  });
+  return order.slice().sort((a, b) => todoDisplaySort(a, b, order));
 }
 
 /** All active todos across projects, same importance sort within global list order. */
@@ -2736,11 +3175,7 @@ function sortAllActiveTodos(allTodos) {
   full.forEach(t => {
     if (!t.done) order.push(t);
   });
-  return order.slice().sort((a, b) => {
-    const da = importanceTier(a), db = importanceTier(b);
-    if (da !== db) return da - db;
-    return order.indexOf(a) - order.indexOf(b);
-  });
+  return order.slice().sort((a, b) => todoDisplaySort(a, b, order));
 }
 
 function projectPickHtml(todoId, projectId) {
@@ -3150,13 +3585,16 @@ function renderTop3Card(rank, todo) {
 function renderTodoRow(todo, displayRank, totalActive, showProjectPick) {
   const safeId = escHtml(todo.id);
   const isDone = todo.done;
+  const overdue = !isDone && isTodoOverdue(todo);
   const impHtml = isDone ? importanceDoneLabel(todo) : importancePickHtml(todo.id, todo.importance);
   const projCell = showProjectPick
     ? `<div class="todo-project-cell">${projectPickHtml(todo.id, todo.projectId)}</div>`
     : '';
-  const rowCls = ['todo-row', isDone ? 'is-done' : '', showProjectPick ? 'has-project-pick' : ''].filter(Boolean).join(' ');
+  const schedCls = ['todo-row', 'has-sched-cols', isDone ? 'is-done' : '', overdue ? 'is-overdue' : '', showProjectPick ? 'has-project-pick' : ''].filter(Boolean).join(' ');
+  const dueCell = isDone ? '' : `<div class="todo-due-cell">${todoDueHtml(todo.id, todo.dueBy)}</div>`;
+  const blockCell = isDone ? '' : `<div class="todo-block-cell">${todoBlockHtml(todo.id, todo)}</div>`;
   return `
-    <div class="${rowCls}">
+    <div class="${schedCls}">
       <div class="todo-rank-num">${isDone ? '✓' : '#' + displayRank}</div>
       <div class="todo-import-cell">${impHtml}</div>
       <div class="todo-body">
@@ -3164,6 +3602,8 @@ function renderTodoRow(todo, displayRank, totalActive, showProjectPick) {
                 onclick="toggleTodoDone('${safeId}')">${isDone ? '✓' : ''}</button>
         ${todoTextareaHtml(todo.id, todo.text)}
       </div>
+      ${dueCell}
+      ${blockCell}
       ${projCell}
       <div class="todo-actions">
         ${isDone ? '' : `
