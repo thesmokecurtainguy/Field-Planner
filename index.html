@@ -559,7 +559,7 @@
   .top3 { display: flex; flex-direction: column; gap: 12px; }
   .top3-card {
     background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius);
-    padding: 18px 20px; display: grid; grid-template-columns: 52px 52px 1fr auto; align-items: center; gap: 14px;
+    padding: 18px 20px; display: grid; grid-template-columns: 52px 52px minmax(0, 1fr) auto; align-items: start; gap: 14px;
     transition: box-shadow 0.15s, transform 0.15s, opacity 0.2s;
     box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   }
@@ -580,35 +580,36 @@
   .top3-card.placeholder .top3-rank { color: var(--text-faint); }
 
   .top3-import {
-    display: flex; align-items: center; justify-content: center; align-self: stretch;
-    min-height: 40px;
+    display: flex; align-items: flex-start; justify-content: center; align-self: stretch;
+    min-height: 40px; padding-top: 4px;
   }
   .todo-import-cell {
-    display: flex; align-items: center; justify-content: center; min-width: 0;
+    display: flex; align-items: flex-start; justify-content: center; min-width: 0; padding-top: 6px;
   }
   .todo-import-static {
     font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
     color: var(--text-muted); text-align: center; min-width: 28px;
   }
 
-  .todo-body { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .todo-body { display: flex; align-items: flex-start; gap: 10px; min-width: 0; width: 100%; }
   .todo-check {
     width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border-strong);
     background: var(--surface); cursor: pointer; flex-shrink: 0; display: inline-flex;
-    align-items: center; justify-content: center; transition: all 0.15s; padding: 0;
+    align-items: center; justify-content: center; transition: all 0.15s; padding: 0; margin-top: 3px;
   }
   .todo-check:hover { border-color: var(--text); }
   .todo-check.is-done { background: var(--text); border-color: var(--text); color: #fff; font-size: 12px; }
 
   .todo-text {
-    flex: 1; font-family: 'DM Sans', sans-serif; font-size: 16px; color: var(--text);
+    flex: 1; width: 100%; font-family: 'DM Sans', sans-serif; font-size: 16px; color: var(--text);
     background: none; border: none; outline: none; padding: 4px 0; min-width: 0;
-    line-height: 1.4;
+    line-height: 1.4; resize: none; overflow: hidden; white-space: pre-wrap;
+    word-break: break-word; overflow-wrap: anywhere;
   }
   .top3-card .todo-text { font-size: 17px; font-weight: 500; }
   .todo-text::placeholder { color: var(--text-faint); font-weight: 300; font-style: italic; }
 
-  .todo-actions { display: flex; gap: 4px; align-items: center; }
+  .todo-actions { display: flex; gap: 4px; align-items: flex-start; padding-top: 2px; }
   .todo-btn {
     background: none; border: 1px solid transparent; border-radius: var(--radius-sm);
     padding: 4px 8px; cursor: pointer; color: var(--text-faint); font-size: 13px;
@@ -647,9 +648,10 @@
   }
   .todo-matches-label .todo-matches-warn { color: var(--ooo-text); }
   .todo-match {
-    display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px;
+    display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border-radius: 4px;
     font-size: 13px; color: var(--text); cursor: default;
   }
+  .todo-match > span:last-child { min-width: 0; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
   .todo-match:hover { background: var(--surface2); }
   .todo-match-tag {
     font-size: 10px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
@@ -687,13 +689,13 @@
   .todo-section-body { display: flex; flex-direction: column; gap: 4px; }
 
   .todo-row {
-    display: grid; grid-template-columns: 26px 50px 1fr auto; align-items: center; gap: 10px;
+    display: grid; grid-template-columns: 26px 50px minmax(0, 1fr) auto; align-items: start; gap: 10px;
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
     padding: 8px 12px;
   }
   .todo-row:hover { border-color: var(--border-strong); }
   .todo-row .todo-rank-num {
-    font-size: 12px; color: var(--text-faint); font-weight: 500; text-align: center;
+    font-size: 12px; color: var(--text-faint); font-weight: 500; text-align: center; padding-top: 6px;
   }
   .todo-row.is-done .todo-text { text-decoration: line-through; color: var(--text-faint); }
   .todo-row.is-done { opacity: 0.7; }
@@ -959,7 +961,7 @@
     font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 4px 6px; border-radius: var(--radius-sm);
     border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); max-width: 100%;
   }
-  .todo-project-cell { min-width: 0; }
+  .todo-project-cell { min-width: 0; padding-top: 4px; }
   .todo-row.has-project-pick { grid-template-columns: 26px 50px minmax(0, 1fr) 118px auto; }
   .todo-add-project-wrap {
     display: flex; align-items: center; gap: 8px; flex-shrink: 0;
@@ -2446,6 +2448,8 @@ function renderDashboard() {
       openModal(key, new Date(y, mo - 1, d));
     });
   });
+
+  initTodoTextareas(host);
 }
 
 // ── TODO LIST + PROJECTS ─────────────────────────────────────────────────────
@@ -2989,6 +2993,16 @@ function updateTodoText(id, text) {
   saveTodos(todos);
 }
 
+function autoSizeTodoText(el) {
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = `${el.scrollHeight}px`;
+}
+
+function initTodoTextareas(root) {
+  (root || document).querySelectorAll('textarea.todo-text').forEach(autoSizeTodoText);
+}
+
 function toggleTodoDone(id) {
   const todos = getTodos();
   const idx = todos.findIndex(x => x.id === id);
@@ -3072,6 +3086,14 @@ function escHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function todoTextareaHtml(id, text) {
+  const safeId = escHtml(id);
+  return `<textarea class="todo-text" rows="1"
+    oninput="autoSizeTodoText(this)"
+    onblur="updateTodoText('${safeId}', this.value)"
+    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.blur();}">${escHtml(text)}</textarea>`;
+}
+
 function renderTop3Card(rank, todo) {
   const placeholder = !todo;
   const rankNames = { 1: 'rank-1', 2: 'rank-2', 3: 'rank-3' };
@@ -3089,9 +3111,7 @@ function renderTop3Card(rank, todo) {
           ? `<div class="todo-text" style="color:var(--text-faint); font-style:italic; font-weight:300;">Add a task below…</div>`
           : `<button class="todo-check ${todo.done ? 'is-done' : ''}" title="Mark ${todo.done ? 'not done' : 'done'}"
                       onclick="toggleTodoDone('${safeId}')">${todo.done ? '✓' : ''}</button>
-             <input class="todo-text" type="text" value="${escHtml(todo.text)}"
-                    onblur="updateTodoText('${safeId}', this.value)"
-                    onkeydown="if(event.key==='Enter'){this.blur();}">`}
+             ${todoTextareaHtml(todo.id, todo.text)}`}
       </div>
       <div class="todo-actions">
         ${placeholder ? '' : `
@@ -3119,9 +3139,7 @@ function renderTodoRow(todo, displayRank, totalActive, showProjectPick) {
       <div class="todo-body">
         <button class="todo-check ${isDone ? 'is-done' : ''}" title="Mark ${isDone ? 'not done' : 'done'}"
                 onclick="toggleTodoDone('${safeId}')">${isDone ? '✓' : ''}</button>
-        <input class="todo-text" type="text" value="${escHtml(todo.text)}"
-               onblur="updateTodoText('${safeId}', this.value)"
-               onkeydown="if(event.key==='Enter'){this.blur();}">
+        ${todoTextareaHtml(todo.id, todo.text)}
       </div>
       ${projCell}
       <div class="todo-actions">
@@ -3325,6 +3343,8 @@ function renderTodo() {
     ${backlogHtml}
     ${doneHtml}
   `;
+
+  initTodoTextareas(host);
 }
 
 function updateTodoMatches(query) {
