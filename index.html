@@ -955,6 +955,19 @@
     font-family: 'DM Sans', sans-serif; font-size: 14px; padding: 6px 10px; border-radius: var(--radius-sm);
     border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); min-width: 160px;
   }
+  .todo-project-cell-select, .todo-add-project-select {
+    font-family: 'DM Sans', sans-serif; font-size: 12px; padding: 4px 6px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); max-width: 100%;
+  }
+  .todo-project-cell { min-width: 0; }
+  .todo-row.has-project-pick { grid-template-columns: 26px 50px minmax(0, 1fr) 118px auto; }
+  .todo-add-project-wrap {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+  }
+  .todo-add-project-wrap label {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-muted); white-space: nowrap;
+  }
 
   @media (max-width: 640px) {
     header { padding: 0 1rem; }
@@ -2445,6 +2458,7 @@ function renderDashboard() {
 const TODOS_KEY          = '__todos__';
 const PROJECTS_KEY       = '__projects__';
 const GENERAL_PID        = 'p-general';
+const ALL_PROJECTS_PID   = '__all__';
 const TODOS_BACKLOG_OPEN = 'fp-todo-backlog-open';
 const TODOS_DONE_OPEN    = 'fp-todo-done-open';
 
@@ -2535,6 +2549,10 @@ function openTodoForProject(pid) {
   selectedTodoProjectId = pid;
   try { localStorage.setItem('fp-todo-project', pid); } catch (_) {}
   setView('todo');
+}
+
+function isTodoAllProjectsView() {
+  return selectedTodoProjectId === ALL_PROJECTS_PID;
 }
 
 function onTodoProjectChange(pid) {
@@ -2680,6 +2698,43 @@ function sortActiveTodosForPlate(pid, allTodos) {
   });
 }
 
+/** All active todos across projects, same importance sort within global list order. */
+function sortAllActiveTodos(allTodos) {
+  const full = allTodos || getTodos();
+  const order = [];
+  full.forEach(t => {
+    if (!t.done) order.push(t);
+  });
+  return order.slice().sort((a, b) => {
+    const da = importanceTier(a), db = importanceTier(b);
+    if (da !== db) return da - db;
+    return order.indexOf(a) - order.indexOf(b);
+  });
+}
+
+function projectPickHtml(todoId, projectId) {
+  const projects = getProjects();
+  const cur = projectId || GENERAL_PID;
+  const opts = projects.map(p =>
+    `<option value="${esc(p.id)}"${p.id === cur ? ' selected' : ''}>${escHtml(p.name)}</option>`
+  ).join('');
+  return `<select class="todo-project-cell-select" aria-label="Project bucket" title="Move to project"
+    onchange="setTodoProject(${JSON.stringify(todoId)}, this.value)">${opts}</select>`;
+}
+
+function setTodoProject(id, newPid) {
+  if (!newPid) return;
+  const todos = getTodos();
+  const t = todos.find(x => x.id === id);
+  if (!t || t.projectId === newPid) return;
+  const oldPid = t.projectId;
+  t.projectId = newPid;
+  saveTodos(todos);
+  if (oldPid) touchProject(oldPid);
+  touchProject(newPid);
+  refreshTodoViews();
+}
+
 function importancePickHtml(id, imp) {
   const v = ((imp || '') + '').toLowerCase();
   const sel = x => v === x ? ' selected' : '';
@@ -2756,6 +2811,11 @@ function openTodoFromPlateModal() {
 
 function getAddTodoProjectId() {
   if (currentView === 'dashboard') return getDashboardTop3ProjectId();
+  if (isTodoAllProjectsView()) {
+    const sel = document.getElementById('todo-add-project-select');
+    if (sel && sel.value) return sel.value;
+    return GENERAL_PID;
+  }
   return selectedTodoProjectId || GENERAL_PID;
 }
 
@@ -3000,10 +3060,11 @@ function promoteTodoToTop(id) {
 }
 
 function clearCompletedTodos() {
-  const pid = selectedTodoProjectId || GENERAL_PID;
-  const todos = getTodos().filter(x => !(x.done && x.projectId === pid));
+  const todos = isTodoAllProjectsView()
+    ? getTodos().filter(x => !x.done)
+    : getTodos().filter(x => !(x.done && x.projectId === (selectedTodoProjectId || GENERAL_PID)));
   saveTodos(todos);
-  touchProject(pid);
+  if (!isTodoAllProjectsView()) touchProject(selectedTodoProjectId || GENERAL_PID);
   refreshTodoViews();
 }
 
@@ -3043,12 +3104,16 @@ function renderTop3Card(rank, todo) {
   `;
 }
 
-function renderTodoRow(todo, displayRank, totalActive) {
+function renderTodoRow(todo, displayRank, totalActive, showProjectPick) {
   const safeId = escHtml(todo.id);
   const isDone = todo.done;
   const impHtml = isDone ? importanceDoneLabel(todo) : importancePickHtml(todo.id, todo.importance);
+  const projCell = showProjectPick
+    ? `<div class="todo-project-cell">${projectPickHtml(todo.id, todo.projectId)}</div>`
+    : '';
+  const rowCls = ['todo-row', isDone ? 'is-done' : '', showProjectPick ? 'has-project-pick' : ''].filter(Boolean).join(' ');
   return `
-    <div class="todo-row ${isDone ? 'is-done' : ''}">
+    <div class="${rowCls}">
       <div class="todo-rank-num">${isDone ? '✓' : '#' + displayRank}</div>
       <div class="todo-import-cell">${impHtml}</div>
       <div class="todo-body">
@@ -3058,11 +3123,12 @@ function renderTodoRow(todo, displayRank, totalActive) {
                onblur="updateTodoText('${safeId}', this.value)"
                onkeydown="if(event.key==='Enter'){this.blur();}">
       </div>
+      ${projCell}
       <div class="todo-actions">
         ${isDone ? '' : `
           <button class="todo-btn" title="Promote to #1"   onclick="promoteTodoToTop('${safeId}')">⇈</button>
           <button class="todo-btn" title="Move up"         onclick="moveTodo('${safeId}', -1)">▲</button>
-          <button class="todo-btn" title="Move down"       onclick="moveTodo('${safeId}',  1)" ${displayRank===totalActive?'disabled':''}>▼</button>
+          <button class="todo-btn" title="Move down"       onclick="moveTodo('${safeId}',  1)" ${!showProjectPick && displayRank===totalActive?'disabled':''}>▼</button>
         `}
         <button class="todo-btn danger" title="Delete" onclick="deleteTodo('${safeId}')">✕</button>
       </div>
@@ -3076,25 +3142,28 @@ function renderTodo() {
 
   const projects = getProjects();
   let pid = selectedTodoProjectId || GENERAL_PID;
-  if (!projects.some(p => p.id === pid)) {
+  if (pid !== ALL_PROJECTS_PID && !projects.some(p => p.id === pid)) {
     pid = GENERAL_PID;
     selectedTodoProjectId = GENERAL_PID;
     try { localStorage.setItem('fp-todo-project', GENERAL_PID); } catch (_) {}
   }
 
-  const projOpts = projects.map(p =>
-    `<option value="${esc(p.id)}"${p.id === pid ? ' selected' : ''}>${escHtml(p.name)}</option>`
+  const allView = pid === ALL_PROJECTS_PID;
+  const addProjOpts = projects.map(p =>
+    `<option value="${esc(p.id)}"${p.id === GENERAL_PID ? ' selected' : ''}>${escHtml(p.name)}</option>`
   ).join('');
 
-  const curName = escHtml((projects.find(p => p.id === pid) || {}).name || 'Project');
+  const projOpts =
+    `<option value="${ALL_PROJECTS_PID}"${allView ? ' selected' : ''}>All projects</option>` +
+    projects.map(p =>
+      `<option value="${esc(p.id)}"${p.id === pid ? ' selected' : ''}>${escHtml(p.name)}</option>`
+    ).join('');
+
+  const curName = allView
+    ? 'All projects'
+    : escHtml((projects.find(p => p.id === pid) || {}).name || 'Project');
 
   const todosAll = getTodos();
-  const activeOrdered = sortActiveTodosForPlate(pid, todosAll);
-  const top3 = activeOrdered.slice(0, 3);
-  const backlog = activeOrdered.slice(3);
-
-  const todos = todosAll.filter(t => t.projectId === pid);
-  const done = todos.filter(t => t.done);
 
   if (localStorage.getItem(TODOS_BACKLOG_OPEN) === null) {
     localStorage.setItem(TODOS_BACKLOG_OPEN, '1');
@@ -3102,67 +3171,142 @@ function renderTodo() {
   const backlogOpen = localStorage.getItem(TODOS_BACKLOG_OPEN) === '1';
   const doneOpen    = localStorage.getItem(TODOS_DONE_OPEN)    === '1';
 
-  const top3Html = [1,2,3].map(r => renderTop3Card(r, top3[r-1])).join('');
+  let introHtml, top3Html, backlogHtml, doneHtml, toolbarHtml, addProjectHtml;
 
-  const backlogHtml = backlog.length ? `
-    <div class="todo-section ${backlogOpen ? '' : 'collapsed'}" id="todo-backlog">
-      <div class="todo-section-header" onclick="toggleTodoSection('backlog')">
-        <div class="todo-section-title">
-          <span class="todo-caret">▼</span> Backlog
-          <span class="todo-section-count">${backlog.length}</span>
+  if (allView) {
+    const activeOrdered = sortAllActiveTodos(todosAll);
+    const done = todosAll.filter(t => t.done);
+
+    introHtml = activeOrdered.length === 0 && !done.length ? `
+      <div class="todo-intro">
+        Every task, every project.
+        <span class="todo-empty-hint">Add a task below, then use the Project column to sort items into buckets.</span>
+      </div>
+    ` : `
+      <div class="todo-intro">All tasks across projects. Use the <strong>Project</strong> column to move items into buckets.</div>
+    `;
+
+    top3Html = '';
+
+    backlogHtml = activeOrdered.length ? `
+      <div class="todo-section ${backlogOpen ? '' : 'collapsed'}" id="todo-backlog">
+        <div class="todo-section-header" onclick="toggleTodoSection('backlog')">
+          <div class="todo-section-title">
+            <span class="todo-caret">▼</span> Active
+            <span class="todo-section-count">${activeOrdered.length}</span>
+          </div>
+          <div class="todo-section-count" style="color:var(--text-faint); background:none;">A→B→C priority</div>
         </div>
-        <div class="todo-section-count" style="color:var(--text-faint); background:none;">priority order</div>
-      </div>
-      <div class="todo-section-body">
-        ${backlog.map((t, i) => renderTodoRow(t, i + 4, activeOrdered.length)).join('')}
-      </div>
-    </div>
-  ` : '';
-
-  const doneHtml = done.length ? `
-    <div class="todo-section ${doneOpen ? '' : 'collapsed'}" id="todo-done">
-      <div class="todo-section-header" onclick="toggleTodoSection('done')">
-        <div class="todo-section-title">
-          <span class="todo-caret">▼</span> Completed
-          <span class="todo-section-count">${done.length}</span>
+        <div class="todo-section-body">
+          ${activeOrdered.map((t, i) => renderTodoRow(t, i + 1, activeOrdered.length, true)).join('')}
         </div>
-        <button class="todo-btn" onclick="event.stopPropagation(); clearCompletedTodos()">Clear all</button>
       </div>
-      <div class="todo-section-body">
-        ${done.map(t => renderTodoRow(t, 0, activeOrdered.length)).join('')}
-      </div>
-    </div>
-  ` : '';
+    ` : '';
 
-  const introHtml = activeOrdered.length === 0 ? `
-    <div class="todo-intro">
-      Top three for ${curName}?
-      <span class="todo-empty-hint">Add your first task for this project below. The top of the list is what you focus on.</span>
-    </div>
-  ` : `
-    <div class="todo-intro">Your top three for <strong>${curName}</strong>, in priority order.</div>
-  `;
+    doneHtml = done.length ? `
+      <div class="todo-section ${doneOpen ? '' : 'collapsed'}" id="todo-done">
+        <div class="todo-section-header" onclick="toggleTodoSection('done')">
+          <div class="todo-section-title">
+            <span class="todo-caret">▼</span> Completed
+            <span class="todo-section-count">${done.length}</span>
+          </div>
+          <button class="todo-btn" onclick="event.stopPropagation(); clearCompletedTodos()">Clear all</button>
+        </div>
+        <div class="todo-section-body">
+          ${done.map(t => renderTodoRow(t, 0, activeOrdered.length, true)).join('')}
+        </div>
+      </div>
+    ` : '';
 
-  const toolbarHtml = todos.length ? `
-    <div class="todo-toolbar">
-      <div class="todo-toolbar-stats">
-        <span><b>${activeOrdered.length}</b> active</span>
-        ${backlog.length ? `<span><b>${backlog.length}</b> in backlog</span>` : ''}
-        ${done.length ? `<span><b>${done.length}</b> done</span>` : ''}
+    toolbarHtml = todosAll.length ? `
+      <div class="todo-toolbar">
+        <div class="todo-toolbar-stats">
+          <span><b>${activeOrdered.length}</b> active</span>
+          ${done.length ? `<span><b>${done.length}</b> done</span>` : ''}
+        </div>
+        <div class="todo-toolbar-actions">
+          <button class="todo-btn" onclick="expandAllTodoSections()">Show all</button>
+          <button class="todo-btn" onclick="collapseAllTodoSections()">Collapse</button>
+        </div>
       </div>
-      <div class="todo-toolbar-actions">
-        <button class="todo-btn" onclick="expandAllTodoSections()">Show all</button>
-        <button class="todo-btn" onclick="collapseAllTodoSections()">Collapse</button>
+    ` : '';
+
+    addProjectHtml = `
+      <div class="todo-add-project-wrap">
+        <label for="todo-add-project-select">Into</label>
+        <select class="todo-add-project-select" id="todo-add-project-select" aria-label="Project for new task">${addProjOpts}</select>
+      </div>`;
+  } else {
+    const activeOrdered = sortActiveTodosForPlate(pid, todosAll);
+    const top3 = activeOrdered.slice(0, 3);
+    const backlog = activeOrdered.slice(3);
+    const todos = todosAll.filter(t => t.projectId === pid);
+    const done = todos.filter(t => t.done);
+
+    top3Html = [1, 2, 3].map(r => renderTop3Card(r, top3[r - 1])).join('');
+
+    backlogHtml = backlog.length ? `
+      <div class="todo-section ${backlogOpen ? '' : 'collapsed'}" id="todo-backlog">
+        <div class="todo-section-header" onclick="toggleTodoSection('backlog')">
+          <div class="todo-section-title">
+            <span class="todo-caret">▼</span> Backlog
+            <span class="todo-section-count">${backlog.length}</span>
+          </div>
+          <div class="todo-section-count" style="color:var(--text-faint); background:none;">priority order</div>
+        </div>
+        <div class="todo-section-body">
+          ${backlog.map((t, i) => renderTodoRow(t, i + 4, activeOrdered.length, false)).join('')}
+        </div>
       </div>
-    </div>
-  ` : '';
+    ` : '';
+
+    doneHtml = done.length ? `
+      <div class="todo-section ${doneOpen ? '' : 'collapsed'}" id="todo-done">
+        <div class="todo-section-header" onclick="toggleTodoSection('done')">
+          <div class="todo-section-title">
+            <span class="todo-caret">▼</span> Completed
+            <span class="todo-section-count">${done.length}</span>
+          </div>
+          <button class="todo-btn" onclick="event.stopPropagation(); clearCompletedTodos()">Clear all</button>
+        </div>
+        <div class="todo-section-body">
+          ${done.map(t => renderTodoRow(t, 0, activeOrdered.length, false)).join('')}
+        </div>
+      </div>
+    ` : '';
+
+    introHtml = activeOrdered.length === 0 ? `
+      <div class="todo-intro">
+        Top three for ${curName}?
+        <span class="todo-empty-hint">Add your first task for this project below. The top of the list is what you focus on.</span>
+      </div>
+    ` : `
+      <div class="todo-intro">Your top three for <strong>${curName}</strong>, in priority order.</div>
+    `;
+
+    toolbarHtml = todos.length ? `
+      <div class="todo-toolbar">
+        <div class="todo-toolbar-stats">
+          <span><b>${activeOrdered.length}</b> active</span>
+          ${backlog.length ? `<span><b>${backlog.length}</b> in backlog</span>` : ''}
+          ${done.length ? `<span><b>${done.length}</b> done</span>` : ''}
+        </div>
+        <div class="todo-toolbar-actions">
+          <button class="todo-btn" onclick="expandAllTodoSections()">Show all</button>
+          <button class="todo-btn" onclick="collapseAllTodoSections()">Collapse</button>
+        </div>
+      </div>
+    ` : '';
+
+    addProjectHtml = '';
+  }
 
   host.innerHTML = `
     <div class="todo-project-bar">
       <span class="todo-project-label">Project</span>
       <select class="todo-project-select" id="todo-project-select" onchange="onTodoProjectChange(this.value)">${projOpts}</select>
       <button type="button" class="todo-btn" onclick="addProjectFromPrompt()">+ New project</button>
-      ${pid !== GENERAL_PID ? `<button type="button" class="todo-btn danger" onclick="deleteProject(${JSON.stringify(pid)})">Remove project…</button>` : ''}
+      ${!allView && pid !== GENERAL_PID ? `<button type="button" class="todo-btn danger" onclick="deleteProject(${JSON.stringify(pid)})">Remove project…</button>` : ''}
     </div>
     ${introHtml}
     <div class="top3">${top3Html}</div>
@@ -3172,6 +3316,7 @@ function renderTodo() {
                placeholder="Add a task and press Enter…"
                oninput="updateTodoMatches(this.value)"
                onkeydown="if(event.key==='Enter'){addTodo();}">
+        ${addProjectHtml}
         <button class="todo-add-btn" onclick="addTodo()">Add</button>
       </div>
       <div class="todo-matches" id="todo-matches"></div>
@@ -3188,13 +3333,16 @@ function updateTodoMatches(query) {
   const q = (query || '').trim().toLowerCase();
   if (q.length < 2) { box.classList.remove('is-open'); box.innerHTML = ''; return; }
 
+  const allTodos = getTodos();
+  const allView = currentView === 'todo' && isTodoAllProjectsView();
   let scopePid = GENERAL_PID;
-  if (currentView === 'todo') scopePid = selectedTodoProjectId || GENERAL_PID;
+  if (currentView === 'todo' && !allView) scopePid = selectedTodoProjectId || GENERAL_PID;
   else if (currentView === 'dashboard') scopePid = getDashboardTop3ProjectId();
 
-  const todos    = getTodos().filter(t => t.projectId === scopePid);
-  const sortedActive = sortActiveTodosForPlate(scopePid, getTodos());
-  const inTop    = new Set(sortedActive.slice(0, 3).map(t => t.id));
+  const todos = allView ? allTodos : allTodos.filter(t => t.projectId === scopePid);
+  const sortedActive = allView ? sortAllActiveTodos(allTodos) : sortActiveTodosForPlate(scopePid, allTodos);
+  const inTop = allView ? new Set() : new Set(sortedActive.slice(0, 3).map(t => t.id));
+  const projectNames = Object.fromEntries(getProjects().map(p => [p.id, p.name]));
 
   const hits = todos
     .map(t => ({ t, score: t.text.toLowerCase().includes(q) ? 1 : 0 }))
@@ -3211,8 +3359,10 @@ function updateTodoMatches(query) {
   box.innerHTML = `
     <div class="todo-matches-label">${label}</div>
     ${hits.map(({ t }) => {
-      const where = t.done ? 'is-done' : (inTop.has(t.id) ? 'is-top' : 'is-backlog');
-      const whereLabel = t.done ? 'Done' : (inTop.has(t.id) ? 'Top 3' : 'Backlog');
+      let whereLabel;
+      if (allView) whereLabel = escHtml(projectNames[t.projectId] || 'General');
+      else whereLabel = t.done ? 'Done' : (inTop.has(t.id) ? 'Top 3' : 'Backlog');
+      const where = allView ? 'is-backlog' : (t.done ? 'is-done' : (inTop.has(t.id) ? 'is-top' : 'is-backlog'));
       return `
         <div class="todo-match">
           <span class="todo-match-tag ${where}">${whereLabel}</span>
