@@ -1293,25 +1293,88 @@ async function forcePush() {
   await pushToRemote();
 }
 
-// Flush on page unload using keepalive so the request survives tab close
-window.addEventListener('beforeunload', () => {
-  clearTimeout(_syncTimer);
+function todoTs(t) {
+  return (t && (t.updatedAt || t.createdAt)) || 0;
+}
+
+function touchTodo(t) {
+  if (t) t.updatedAt = Date.now();
+}
+
+/** Merge two todo records — newer updatedAt wins; null in the newer copy clears optional fields. */
+function mergeTodoObjects(prev, incoming) {
+  if (!prev) return { ...incoming };
+  if (!incoming) return { ...prev };
+  const OPT = ['dueBy', 'blockDate', 'blockStart', 'blockEnd', 'importance'];
+  if (todoTs(incoming) >= todoTs(prev)) {
+    const out = { ...prev, ...incoming };
+    for (const f of OPT) {
+      if (f in incoming && incoming[f] == null) delete out[f];
+    }
+    return out;
+  }
+  return { ...prev };
+}
+
+let _todoTextSaveTimer = null;
+let _todoTextSavePending = null;
+
+function flushPendingTodoText() {
+  clearTimeout(_todoTextSaveTimer);
+  if (!_todoTextSavePending) return false;
+  const p = _todoTextSavePending;
+  _todoTextSavePending = null;
+  const todos = getTodos();
+  const t = todos.find(x => x.id === p.id);
+  if (!t || t.text === p.text) return false;
+  t.text = p.text;
+  touchTodo(t);
+  DATA['__todos__'] = JSON.stringify(todos);
+  saveLocal(DATA);
+  return true;
+}
+
+function flushAllTodoEdits() {
+  let changed = flushPendingTodoText();
+  const edits = new Map();
+  document.querySelectorAll('textarea.todo-text[data-todo-id]').forEach(el => {
+    if (el.dataset.todoId) edits.set(el.dataset.todoId, el.value);
+  });
+  if (edits.size) {
+    const todos = getTodos();
+    edits.forEach((text, id) => {
+      const t = todos.find(x => x.id === id);
+      if (t && t.text !== text) { t.text = text; touchTodo(t); changed = true; }
+    });
+    if (changed) {
+      DATA['__todos__'] = JSON.stringify(todos);
+      saveLocal(DATA);
+    }
+  }
+  return changed;
+}
+
+function pushToRemoteKeepalive() {
   const s   = getSecret();
   const url = s ? `/api/data?secret=${encodeURIComponent(s)}` : '/api/data';
   try {
     fetch(url, { method:'POST', headers:apiHeaders(), body:JSON.stringify(DATA), keepalive:true });
-  } catch(_) {}
+  } catch (_) {}
+}
+
+// Flush on page unload using keepalive so the request survives tab close
+window.addEventListener('beforeunload', () => {
+  clearTimeout(_syncTimer);
+  flushAllTodoEdits();
+  pushToRemoteKeepalive();
 });
 
-/** Merge JSON.stringify'd object arrays by id; overlay wins on field conflicts, overlay order first. */
-function mergeTodoObjects(prev, incoming) {
-  if (!prev) return { ...incoming };
-  const out = { ...prev, ...incoming };
-  for (const f of ['dueBy', 'blockDate', 'blockStart', 'blockEnd', 'importance']) {
-    if (!(f in incoming)) delete out[f];
-  }
-  return out;
-}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'hidden') return;
+  flushAllTodoEdits();
+  clearTimeout(_syncTimer);
+  pushToRemoteKeepalive();
+});
 
 function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
   let base = [], overlay = [];
@@ -1582,7 +1645,8 @@ function setTodoDueBy(id, dateInputVal) {
   if (!t) return;
   const dk = dateInputToDk(dateInputVal);
   if (dk) t.dueBy = dk;
-  else delete t.dueBy;
+  else t.dueBy = null;
+  touchTodo(t);
   saveTodos(todos);
   refreshTodoViews();
 }
@@ -1594,14 +1658,15 @@ function setTodoBlockField(id, field, val) {
   if (field === 'blockDate') {
     const dk = dateInputToDk(val);
     if (dk) t.blockDate = dk;
-    else delete t.blockDate;
+    else t.blockDate = null;
   } else if (field === 'blockStart' || field === 'blockEnd') {
     if (val) {
       t[field] = val;
       if (!t.blockDate) t.blockDate = t.dueBy || dkFromDate(today);
-    } else delete t[field];
+    } else t[field] = null;
   }
-  if (!t.blockStart && !t.blockEnd) delete t.blockDate;
+  if (!t.blockStart && !t.blockEnd) t.blockDate = null;
+  touchTodo(t);
   saveTodos(todos);
   refreshTodoViews();
 }
@@ -1617,6 +1682,7 @@ function assignTodoBlockFromSlot(todoId, dayKey, timeStr) {
   t.blockEnd = em != null
     ? `${String(Math.floor(em / 60)).padStart(2, '0')}:${String(em % 60).padStart(2, '0')}`
     : '';
+  touchTodo(t);
   saveTodos(todos);
   refreshTodoViews();
 }
@@ -2720,18 +2786,7 @@ function handleOverlayClick(e) {
 const VIEW_IDS = ['dashboard','grid','list','week-grid','week-list','day','todo'];
 
 function flushOpenTodoEdits() {
-  const edits = new Map();
-  document.querySelectorAll('textarea.todo-text[data-todo-id]').forEach(el => {
-    if (el.dataset.todoId) edits.set(el.dataset.todoId, el.value);
-  });
-  if (!edits.size) return;
-  const todos = getTodos();
-  let changed = false;
-  edits.forEach((text, id) => {
-    const t = todos.find(x => x.id === id);
-    if (t && t.text !== text) { t.text = text; changed = true; }
-  });
-  if (changed) saveTodos(todos);
+  if (flushAllTodoEdits()) saveData(DATA);
 }
 
 function refreshTodoViews() {
@@ -3188,7 +3243,7 @@ function deleteProject(pid) {
   if (!ok) return;
   const projects = getProjects().filter(p => p.id !== pid);
   const todos = getTodos().map(t =>
-    (t.projectId === pid) ? { ...t, projectId: GENERAL_PID } : t
+    (t.projectId === pid) ? { ...t, projectId: GENERAL_PID, updatedAt: Date.now() } : t
   );
   saveProjects(projects);
   saveTodos(todos);
@@ -3289,6 +3344,7 @@ function setTodoProject(id, newPid) {
   if (!t || t.projectId === newPid) return;
   const oldPid = t.projectId;
   t.projectId = newPid;
+  touchTodo(t);
   saveTodos(todos);
   if (oldPid) touchProject(oldPid);
   touchProject(newPid);
@@ -3318,8 +3374,9 @@ function setTodoImportance(id, val) {
   const todos = getTodos();
   const t = todos.find(x => x.id === id);
   if (!t) return;
-  if (tier === '') delete t.importance;
+  if (tier === '') t.importance = null;
   else t.importance = tier;
+  touchTodo(t);
   saveTodos(todos);
   if (t.projectId) touchProject(t.projectId);
   refreshTodoViews();
@@ -3529,7 +3586,7 @@ function addTodo() {
   const todos = getTodos();
   const pid = getAddTodoProjectId();
   const activeCount = todos.filter(t => !t.done).length;
-  const item = { id: newTodoId(), text, done: false, createdAt: Date.now(), projectId: pid };
+  const item = { id: newTodoId(), text, done: false, createdAt: Date.now(), updatedAt: Date.now(), projectId: pid };
   todos.splice(activeCount, 0, item);
   saveTodos(todos);
   touchProject(pid);
@@ -3541,15 +3598,13 @@ function addTodo() {
   });
 }
 
-let _todoTextSaveTimer = null;
-let _todoTextSavePending = null;
-
 function updateTodoText(id, text) {
   const todos = getTodos();
   const t = todos.find(x => x.id === id);
   if (!t) return;
   if (t.text === text) return;
   t.text = text;
+  touchTodo(t);
   saveTodos(todos);
 }
 
@@ -3579,6 +3634,7 @@ function toggleTodoDone(id) {
   if (idx === -1) return;
   const pid = todos[idx].projectId;
   todos[idx].done = !todos[idx].done;
+  touchTodo(todos[idx]);
   if (todos[idx].done) {
     const [done] = todos.splice(idx, 1);
     todos.push(done);

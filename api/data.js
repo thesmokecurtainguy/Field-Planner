@@ -7,14 +7,24 @@
 // project objects may include dashboardHidden — both sync with the blob.
 const REDIS_KEY = 'fp-data';
 
-/** Merge JSON.stringify'd object arrays by id; incoming wins on field conflicts. */
+const TODO_OPT_FIELDS = ['dueBy', 'blockDate', 'blockStart', 'blockEnd', 'importance'];
+
+function todoTs(t) {
+  return (t && (t.updatedAt || t.createdAt)) || 0;
+}
+
+/** Merge two todo records — newer updatedAt wins; null in the newer copy clears optional fields. */
 function mergeTodoObjects(prev, incoming) {
   if (!prev) return { ...incoming };
-  const out = { ...prev, ...incoming };
-  for (const f of ['dueBy', 'blockDate', 'blockStart', 'blockEnd', 'importance']) {
-    if (!(f in incoming)) delete out[f];
+  if (!incoming) return { ...prev };
+  if (todoTs(incoming) >= todoTs(prev)) {
+    const out = { ...prev, ...incoming };
+    for (const f of TODO_OPT_FIELDS) {
+      if (f in incoming && incoming[f] == null) delete out[f];
+    }
+    return out;
   }
-  return out;
+  return { ...prev };
 }
 
 function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
