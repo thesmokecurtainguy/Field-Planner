@@ -7,6 +7,52 @@
 // project objects may include dashboardHidden — both sync with the blob.
 const REDIS_KEY = 'fp-data';
 
+/** Merge JSON.stringify'd object arrays by id; incoming wins on field conflicts. */
+function mergeTodoObjects(prev, incoming) {
+  if (!prev) return { ...incoming };
+  const out = { ...prev, ...incoming };
+  for (const f of ['dueBy', 'blockDate', 'blockStart', 'blockEnd', 'importance']) {
+    if (!(f in incoming)) delete out[f];
+  }
+  return out;
+}
+
+function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
+  let base = [], overlay = [];
+  try { base = JSON.parse(baseRaw || '[]'); } catch (_) {}
+  try { overlay = JSON.parse(overlayRaw || '[]'); } catch (_) {}
+  if (!Array.isArray(base)) base = [];
+  if (!Array.isArray(overlay)) overlay = [];
+
+  const combine = mergeItem || ((a, b) => (a ? { ...a, ...b } : { ...b }));
+
+  const byId = new Map();
+  base.forEach(item => {
+    if (item && item[idKey]) byId.set(item[idKey], { ...item });
+  });
+  overlay.forEach(item => {
+    if (!item || !item[idKey]) return;
+    const prev = byId.get(item[idKey]);
+    byId.set(item[idKey], combine(prev, item));
+  });
+
+  const order = [];
+  const seen = new Set();
+  overlay.forEach(item => {
+    if (item && item[idKey] && byId.has(item[idKey])) {
+      order.push(byId.get(item[idKey]));
+      seen.add(item[idKey]);
+    }
+  });
+  base.forEach(item => {
+    if (item && item[idKey] && !seen.has(item[idKey])) {
+      order.push(byId.get(item[idKey]));
+      seen.add(item[idKey]);
+    }
+  });
+  return JSON.stringify(order);
+}
+
 async function redis(method, ...args) {
   const url = process.env.KV_REST_API_URL;
   const token = process.env.KV_REST_API_TOKEN;
@@ -68,6 +114,9 @@ module.exports = async function handler(req, res) {
       for (const [k, v] of Object.entries(body)) {
         if (v === null || v === '') {
           delete current[k];
+        } else if (k === '__todos__' || k === '__projects__') {
+          const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
+          current[k] = mergeStoredJsonArrays(current[k], v, 'id', itemMerge);
         } else {
           current[k] = v;
         }

@@ -165,7 +165,19 @@
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
     min-height: 90px; padding: 8px; display: flex; flex-direction: column; gap: 3px;
     transition: background 0.1s; cursor: pointer;
-    min-width: 0; overflow: hidden;
+    min-width: 0; overflow: hidden; position: relative;
+  }
+  .grid-cell.past::after {
+    content: '';
+    position: absolute; inset: 0;
+    pointer-events: none; z-index: 1;
+    background: linear-gradient(
+      to top right,
+      transparent calc(50% - 0.5px),
+      rgba(0, 0, 0, 0.14) calc(50% - 0.5px),
+      rgba(0, 0, 0, 0.14) calc(50% + 0.5px),
+      transparent calc(50% + 0.5px)
+    );
   }
   .grid-cell.empty     { background: none; border-color: transparent; cursor: default; }
   .grid-cell.weekend   { background: var(--weekend-bg); }
@@ -1291,6 +1303,52 @@ window.addEventListener('beforeunload', () => {
   } catch(_) {}
 });
 
+/** Merge JSON.stringify'd object arrays by id; overlay wins on field conflicts, overlay order first. */
+function mergeTodoObjects(prev, incoming) {
+  if (!prev) return { ...incoming };
+  const out = { ...prev, ...incoming };
+  for (const f of ['dueBy', 'blockDate', 'blockStart', 'blockEnd', 'importance']) {
+    if (!(f in incoming)) delete out[f];
+  }
+  return out;
+}
+
+function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
+  let base = [], overlay = [];
+  try { base = JSON.parse(baseRaw || '[]'); } catch (_) {}
+  try { overlay = JSON.parse(overlayRaw || '[]'); } catch (_) {}
+  if (!Array.isArray(base)) base = [];
+  if (!Array.isArray(overlay)) overlay = [];
+
+  const combine = mergeItem || ((a, b) => (a ? { ...a, ...b } : { ...b }));
+
+  const byId = new Map();
+  base.forEach(item => {
+    if (item && item[idKey]) byId.set(item[idKey], { ...item });
+  });
+  overlay.forEach(item => {
+    if (!item || !item[idKey]) return;
+    const prev = byId.get(item[idKey]);
+    byId.set(item[idKey], combine(prev, item));
+  });
+
+  const order = [];
+  const seen = new Set();
+  overlay.forEach(item => {
+    if (item && item[idKey] && byId.has(item[idKey])) {
+      order.push(byId.get(item[idKey]));
+      seen.add(item[idKey]);
+    }
+  });
+  base.forEach(item => {
+    if (item && item[idKey] && !seen.has(item[idKey])) {
+      order.push(byId.get(item[idKey]));
+      seen.add(item[idKey]);
+    }
+  });
+  return JSON.stringify(order);
+}
+
 (async function syncOnLoad() {
   setSyncStatus('syncing', '⟳ Syncing…');
   try {
@@ -1303,13 +1361,32 @@ window.addEventListener('beforeunload', () => {
     // Merge: remote wins for scalar keys (notes, status, location).
     // For event arrays: if remote is empty but local has real data,
     // keep local and push it back up to repair Redis.
+    // Todos/projects merge by task/project id so fields (due, block, text) aren't lost.
     let needsPush = remoteEmpty && localHad;
     for (const [k, v] of Object.entries(remote)) {
       const isArray = k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__';
-      if (isArray && (!v || v === '[]') && DATA[k] && DATA[k] !== '[]') {
+      if (k === '__todos__' || k === '__projects__') {
+        const localRaw = DATA[k];
+        const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
+        const merged = mergeStoredJsonArrays(v, localRaw, 'id', itemMerge);
+        if (localRaw && merged !== v) needsPush = true;
+        DATA[k] = merged;
+      } else if (isArray && (!v || v === '[]') && DATA[k] && DATA[k] !== '[]') {
         needsPush = true; // local has events that remote is missing
       } else {
         DATA[k] = v;
+      }
+    }
+
+    // Edits made while the fetch was in flight live in localStorage — fold them in.
+    const freshLocal = loadLocal();
+    for (const k of ['__todos__', '__projects__']) {
+      if (!freshLocal[k]) continue;
+      const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
+      const merged = mergeStoredJsonArrays(DATA[k], freshLocal[k], 'id', itemMerge);
+      if (merged !== DATA[k]) {
+        DATA[k] = merged;
+        needsPush = true;
       }
     }
 
@@ -2642,7 +2719,23 @@ function handleOverlayClick(e) {
 // ── CORE ─────────────────────────────────────────────────────────────────────
 const VIEW_IDS = ['dashboard','grid','list','week-grid','week-list','day','todo'];
 
+function flushOpenTodoEdits() {
+  const edits = new Map();
+  document.querySelectorAll('textarea.todo-text[data-todo-id]').forEach(el => {
+    if (el.dataset.todoId) edits.set(el.dataset.todoId, el.value);
+  });
+  if (!edits.size) return;
+  const todos = getTodos();
+  let changed = false;
+  edits.forEach((text, id) => {
+    const t = todos.find(x => x.id === id);
+    if (t && t.text !== text) { t.text = text; changed = true; }
+  });
+  if (changed) saveTodos(todos);
+}
+
 function refreshTodoViews() {
+  flushOpenTodoEdits();
   render();
 }
 
@@ -2690,6 +2783,7 @@ function navNext() {
 }
 
 function render() {
+  flushOpenTodoEdits();
   migrateWeekLocationsToDays();
   if (currentView === 'week-grid' || currentView === 'week-list') {
     const dates = getWeekDates(curWeekStart);
@@ -3447,12 +3541,26 @@ function addTodo() {
   });
 }
 
+let _todoTextSaveTimer = null;
+let _todoTextSavePending = null;
+
 function updateTodoText(id, text) {
   const todos = getTodos();
   const t = todos.find(x => x.id === id);
   if (!t) return;
+  if (t.text === text) return;
   t.text = text;
   saveTodos(todos);
+}
+
+function queueTodoTextSave(id, text) {
+  _todoTextSavePending = { id, text };
+  clearTimeout(_todoTextSaveTimer);
+  _todoTextSaveTimer = setTimeout(() => {
+    const p = _todoTextSavePending;
+    _todoTextSavePending = null;
+    if (p) updateTodoText(p.id, p.text);
+  }, 400);
 }
 
 function autoSizeTodoText(el) {
@@ -3546,8 +3654,8 @@ function clearCompletedTodos() {
 
 function todoTextareaHtml(id, text) {
   const safeId = escHtml(id);
-  return `<textarea class="todo-text" rows="1"
-    oninput="autoSizeTodoText(this)"
+  return `<textarea class="todo-text" rows="1" data-todo-id="${safeId}"
+    oninput="autoSizeTodoText(this); queueTodoTextSave('${safeId}', this.value)"
     onblur="updateTodoText('${safeId}', this.value)"
     onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();this.blur();}">${escHtml(text)}</textarea>`;
 }
