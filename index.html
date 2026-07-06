@@ -1214,6 +1214,18 @@ let _pulling    = false;
 let _dirtyKeys  = new Set();
 let _deletedKeys= new Set();
 const PULL_INTERVAL_MS = 45000;
+const TODOS_SYNC_KEY = '__todos__';
+const PROJECTS_SYNC_KEY = '__projects__';
+
+function hasPendingPush() {
+  return _syncTimer != null || _pushing || _pushPending;
+}
+
+function shouldSkipRemoteKey(k) {
+  if (_dirtyKeys.has(k) || _deletedKeys.has(k)) return true;
+  if (k === TODOS_SYNC_KEY && hasPendingPush()) return true;
+  return false;
+}
 
 function isStoredArrayKey(k) {
   return k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__';
@@ -1244,8 +1256,13 @@ function buildPushPayload() {
 
 function clearPushState(payload) {
   Object.keys(payload).forEach(k => {
-    if (payload[k] === null) _deletedKeys.delete(k);
-    else _dirtyKeys.delete(k);
+    if (payload[k] === null) {
+      if (_deletedKeys.has(k)) _deletedKeys.delete(k);
+      return;
+    }
+    if (!_dirtyKeys.has(k)) return;
+    // Keep dirty if the user edited again while the push was in flight.
+    if (DATA[k] === payload[k]) _dirtyKeys.delete(k);
   });
 }
 
@@ -1307,8 +1324,14 @@ function migrateDashPrefsIntoData() {
 
 async function pushToRemote() {
   if (_pushing) { _pushPending = true; return; }
+  clearTimeout(_syncTimer);
+  _syncTimer = null;
   const payload = buildPushPayload();
   if (!Object.keys(payload).length) {
+    if (_dirtyKeys.size || _deletedKeys.size) {
+      setTimeout(pushToRemote, 500);
+      return;
+    }
     setSyncStatus('saved', '✓ Saved');
     return;
   }
@@ -1379,8 +1402,8 @@ function flushPendingTodoText() {
   if (!t || t.text === p.text) return false;
   t.text = p.text;
   touchTodo(t);
-  DATA['__todos__'] = JSON.stringify(todos);
-  markDirty('__todos__');
+  DATA[TODOS_SYNC_KEY] = JSON.stringify(todos);
+  markDirty(TODOS_SYNC_KEY);
   saveLocal(DATA);
   return true;
 }
@@ -1398,8 +1421,8 @@ function flushAllTodoEdits() {
       if (t && t.text !== text) { t.text = text; touchTodo(t); changed = true; }
     });
     if (changed) {
-      DATA['__todos__'] = JSON.stringify(todos);
-      markDirty('__todos__');
+      DATA[TODOS_SYNC_KEY] = JSON.stringify(todos);
+      markDirty(TODOS_SYNC_KEY);
       saveLocal(DATA);
     }
   }
@@ -1413,7 +1436,6 @@ function pushToRemoteKeepalive() {
   const url = s ? `/api/data?secret=${encodeURIComponent(s)}` : '/api/data';
   try {
     fetch(url, { method:'POST', headers:apiHeaders(), body:JSON.stringify(payload), keepalive:true });
-    clearPushState(payload);
   } catch (_) {}
 }
 
@@ -1472,12 +1494,12 @@ function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
 
 function mergeRemoteIntoData(remote, opts = {}) {
   const respectDirty = !!opts.respectDirty;
-  const skipKey = k => respectDirty && (_dirtyKeys.has(k) || _deletedKeys.has(k));
+  const skipKey = k => respectDirty && shouldSkipRemoteKey(k);
   let changed = false;
 
   for (const [k, v] of Object.entries(remote)) {
     if (skipKey(k)) continue;
-    if (k === '__todos__' || k === '__projects__') {
+    if (k === TODOS_SYNC_KEY || k === PROJECTS_SYNC_KEY) {
       const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
       const merged = mergeStoredJsonArrays(DATA[k], v, 'id', itemMerge);
       if (merged !== (DATA[k] || '[]')) { DATA[k] = merged; changed = true; }
@@ -3322,7 +3344,10 @@ function getTodos() {
 function saveTodos(arr) {
   DATA[TODOS_KEY] = JSON.stringify(arr);
   markDirty(TODOS_KEY);
-  saveData(DATA);
+  saveLocal(DATA);
+  setSyncStatus('unsaved', '● Unsaved');
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(pushToRemote, 400);
 }
 function newTodoId() { return 't-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
 
