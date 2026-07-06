@@ -127,6 +127,8 @@ module.exports = async function handler(req, res) {
         } else if (k === '__todos__' || k === '__projects__') {
           const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
           current[k] = mergeStoredJsonArrays(current[k], v, 'id', itemMerge);
+        } else if (k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__') {
+          current[k] = mergeStoredJsonArrays(current[k], v, 'id');
         } else {
           current[k] = v;
         }
