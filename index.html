@@ -1077,7 +1077,7 @@
 <header>
   <div class="brand">Field Planner <span>by FireTex</span></div>
   <div class="header-controls">
-    <button id="sync-btn" onclick="forcePush()" title="Sync status — click to force save">⟳ Sync</button>
+    <button id="sync-btn" onclick="syncNow()" title="Pull latest changes, then save yours">⟳ Sync</button>
     <div class="view-toggle">
       <button class="view-btn active" id="btn-dashboard" onclick="setView('dashboard')">Home</button>
       <button class="view-btn"        id="btn-grid"      onclick="setView('grid')">Calendar</button>
@@ -1210,6 +1210,66 @@ let DATA        = loadLocal();
 let _syncTimer  = null;
 let _pushing    = false;
 let _pushPending= false;
+let _pulling    = false;
+let _dirtyKeys  = new Set();
+let _deletedKeys= new Set();
+const PULL_INTERVAL_MS = 45000;
+const TODOS_SYNC_KEY = '__todos__';
+const PROJECTS_SYNC_KEY = '__projects__';
+const BACKGROUND_PULL_SKIP = new Set([TODOS_SYNC_KEY, PROJECTS_SYNC_KEY]);
+
+function hasPendingPush() {
+  return _syncTimer != null || _pushing || _pushPending;
+}
+
+function shouldSkipRemoteKey(k) {
+  if (_dirtyKeys.has(k) || _deletedKeys.has(k)) return true;
+  if (k === TODOS_SYNC_KEY && hasPendingPush()) return true;
+  return false;
+}
+
+function shouldBackgroundPullKey(k) {
+  return BACKGROUND_PULL_SKIP.has(k);
+}
+
+function isStoredArrayKey(k) {
+  return k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__';
+}
+
+function markDirty(...keys) {
+  keys.forEach(k => {
+    _dirtyKeys.add(k);
+    _deletedKeys.delete(k);
+  });
+}
+
+function markDeleted(...keys) {
+  keys.forEach(k => {
+    _deletedKeys.add(k);
+    _dirtyKeys.delete(k);
+  });
+}
+
+function buildPushPayload() {
+  const payload = {};
+  _dirtyKeys.forEach(k => {
+    if (k in DATA) payload[k] = DATA[k];
+  });
+  _deletedKeys.forEach(k => { payload[k] = null; });
+  return payload;
+}
+
+function clearPushState(payload) {
+  Object.keys(payload).forEach(k => {
+    if (payload[k] === null) {
+      if (_deletedKeys.has(k)) _deletedKeys.delete(k);
+      return;
+    }
+    if (!_dirtyKeys.has(k)) return;
+    // Keep dirty if the user edited again while the push was in flight.
+    if (DATA[k] === payload[k]) _dirtyKeys.delete(k);
+  });
+}
 
 function setSyncStatus(state, label) {
   const btn = document.getElementById('sync-btn');
@@ -1260,6 +1320,7 @@ function migrateDashPrefsIntoData() {
         localStorage.removeItem(DATA_KEY_DASH_SHOW_HIDDEN);
         localStorage.removeItem(DATA_KEY_DASH_UPCOMING_TASKS);
       } catch (_) {}
+      markDirty(DATA_KEY_DASH_TOP3, DATA_KEY_DASH_SHOW_HIDDEN, DATA_KEY_DASH_UPCOMING_TASKS);
       saveData(DATA);
     }
   } catch (e) { console.warn('[FP] dash prefs migrate', e); }
@@ -1268,6 +1329,8 @@ function migrateDashPrefsIntoData() {
 
 async function pushToRemote() {
   if (_pushing) { _pushPending = true; return; }
+  clearTimeout(_syncTimer);
+  _syncTimer = null;
   _pushing     = true;
   _pushPending = false;
   setSyncStatus('syncing', '⟳ Saving…');
@@ -1276,6 +1339,8 @@ async function pushToRemote() {
       method: 'POST', headers: apiHeaders(), body: JSON.stringify(DATA)
     });
     if (!r.ok) throw new Error(r.status);
+    _dirtyKeys.clear();
+    _deletedKeys.clear();
     setSyncStatus('saved', '✓ Saved');
   } catch(e) {
     console.warn('[FP] Push failed, retrying in 5s:', e);
@@ -1288,10 +1353,15 @@ async function pushToRemote() {
   if (_pushPending) { _pushPending = false; pushToRemote(); }
 }
 
-async function forcePush() {
+async function syncNow() {
   clearTimeout(_syncTimer);
+  _syncTimer = null;
+  flushAllTodoEdits();
+  await pullFromRemote();
   await pushToRemote();
 }
+
+async function forcePush() { await syncNow(); }
 
 function todoTs(t) {
   return (t && (t.updatedAt || t.createdAt)) || 0;
@@ -1329,7 +1399,8 @@ function flushPendingTodoText() {
   if (!t || t.text === p.text) return false;
   t.text = p.text;
   touchTodo(t);
-  DATA['__todos__'] = JSON.stringify(todos);
+  DATA[TODOS_SYNC_KEY] = JSON.stringify(todos);
+  markDirty(TODOS_SYNC_KEY);
   saveLocal(DATA);
   return true;
 }
@@ -1347,7 +1418,8 @@ function flushAllTodoEdits() {
       if (t && t.text !== text) { t.text = text; touchTodo(t); changed = true; }
     });
     if (changed) {
-      DATA['__todos__'] = JSON.stringify(todos);
+      DATA[TODOS_SYNC_KEY] = JSON.stringify(todos);
+      markDirty(TODOS_SYNC_KEY);
       saveLocal(DATA);
     }
   }
@@ -1370,10 +1442,13 @@ window.addEventListener('beforeunload', () => {
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'hidden') return;
-  flushAllTodoEdits();
-  clearTimeout(_syncTimer);
-  pushToRemoteKeepalive();
+  if (document.visibilityState === 'hidden') {
+    flushAllTodoEdits();
+    clearTimeout(_syncTimer);
+    pushToRemoteKeepalive();
+    return;
+  }
+  pullFromRemote({ quiet: true, background: true });
 });
 
 function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
@@ -1412,6 +1487,69 @@ function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
   return JSON.stringify(order);
 }
 
+function mergeRemoteIntoData(remote, opts = {}) {
+  const respectDirty = !!opts.respectDirty;
+  const background = !!opts.background;
+  const skipKey = k => {
+    if (background && shouldBackgroundPullKey(k)) return true;
+    return respectDirty && shouldSkipRemoteKey(k);
+  };
+  let changed = false;
+
+  for (const [k, v] of Object.entries(remote)) {
+    if (skipKey(k)) continue;
+    if (k === TODOS_SYNC_KEY || k === PROJECTS_SYNC_KEY) {
+      const itemMerge = k === TODOS_SYNC_KEY ? mergeTodoObjects : null;
+      const merged = mergeStoredJsonArrays(DATA[k], v, 'id', itemMerge);
+      if (merged !== (DATA[k] || '[]')) { DATA[k] = merged; changed = true; }
+    } else if (isStoredArrayKey(k)) {
+      if (!v || v === '[]') {
+        // Keep local flights/events when remote has nothing for that day.
+      } else if (!DATA[k] || DATA[k] === '[]') {
+        DATA[k] = v;
+        changed = true;
+      } else {
+        const merged = mergeStoredJsonArrays(DATA[k], v, 'id');
+        if (merged !== DATA[k]) { DATA[k] = merged; changed = true; }
+      }
+    } else if (DATA[k] !== v) {
+      DATA[k] = v;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+async function pullFromRemote(opts = {}) {
+  if (_pulling || _pushing) return false;
+  _pulling = true;
+  try {
+    flushAllTodoEdits();
+    const r = await fetch('/api/data', { headers: apiHeaders() });
+    if (!r.ok) throw new Error(r.status);
+    const remote = await r.json();
+    const changed = mergeRemoteIntoData(remote, { respectDirty: true, background: !!opts.background });
+    if (changed) {
+      saveLocal(DATA);
+      render();
+      if (!opts.quiet) setSyncStatus('saved', '✓ Updated');
+    } else if (!opts.quiet && _dirtyKeys.size === 0 && _deletedKeys.size === 0) {
+      setSyncStatus('saved', '✓ Saved');
+    }
+    return changed;
+  } catch (e) {
+    console.warn('[FP] Pull failed:', e);
+    if (!opts.quiet) setSyncStatus('error', '⚠ Offline');
+    return false;
+  } finally {
+    _pulling = false;
+  }
+}
+
+setInterval(() => {
+  if (document.visibilityState === 'visible') pullFromRemote({ quiet: true, background: true });
+}, PULL_INTERVAL_MS);
+
 (async function syncOnLoad() {
   setSyncStatus('syncing', '⟳ Syncing…');
   try {
@@ -1427,15 +1565,20 @@ function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
     // Todos/projects merge by task/project id so fields (due, block, text) aren't lost.
     let needsPush = remoteEmpty && localHad;
     for (const [k, v] of Object.entries(remote)) {
-      const isArray = k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__';
       if (k === '__todos__' || k === '__projects__') {
         const localRaw = DATA[k];
         const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
         const merged = mergeStoredJsonArrays(v, localRaw, 'id', itemMerge);
         if (localRaw && merged !== v) needsPush = true;
         DATA[k] = merged;
-      } else if (isArray && (!v || v === '[]') && DATA[k] && DATA[k] !== '[]') {
-        needsPush = true; // local has events that remote is missing
+      } else if (isStoredArrayKey(k)) {
+        if (!v || v === '[]') {
+          if (DATA[k] && DATA[k] !== '[]') needsPush = true;
+        } else if (!DATA[k] || DATA[k] === '[]') {
+          DATA[k] = v;
+        } else {
+          DATA[k] = mergeStoredJsonArrays(DATA[k], v, 'id');
+        }
       } else {
         DATA[k] = v;
       }
@@ -1466,6 +1609,7 @@ function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
     render();
 
     if (needsPush) {
+      Object.keys(DATA).forEach(k => markDirty(k));
       await pushToRemote(); // recovers local-only data into Redis
     } else {
       setSyncStatus('saved', '✓ Saved');
@@ -1486,8 +1630,14 @@ function lk(y, m, w)  { return `loc-${y}-${m}-${w}`; }
 function dayLocationKey(key) { return key + '-location'; }
 function getDayLocation(key) { return DATA[dayLocationKey(key)] || ''; }
 function setDayLocation(key, val) {
-  if (val) DATA[dayLocationKey(key)] = val;
-  else delete DATA[dayLocationKey(key)];
+  const dk = dayLocationKey(key);
+  if (val) {
+    DATA[dk] = val;
+    markDirty(dk);
+  } else {
+    delete DATA[dk];
+    markDeleted(dk);
+  }
   saveData(DATA);
 }
 
@@ -1514,7 +1664,12 @@ function migrateWeekLocationsToDays() {
       }
     });
   });
-  if (changed) saveData(DATA);
+  if (changed) {
+    Object.keys(DATA).forEach(k => {
+      if (k.endsWith('-location') && DATA[k]) markDirty(k);
+    });
+    saveData(DATA);
+  }
 }
 
 function cellDayMetaHtml(key) {
@@ -1533,7 +1688,7 @@ function bindDayFieldInputs(root) {
       const field = e.target.dataset.dayField;
       if (!k || !field) return;
       if (field === 'location') setDayLocation(k, e.target.value);
-      else if (field === 'note') { DATA[k] = e.target.value; saveData(DATA); }
+      else if (field === 'note') { DATA[k] = e.target.value; markDirty(k); saveData(DATA); }
     });
   });
 }
@@ -1566,8 +1721,13 @@ function getDashUpcomingTasks() {
 
 function onDashUpcomingTasksChange(el) {
   try {
-    if (el.checked) DATA[DATA_KEY_DASH_UPCOMING_TASKS] = '1';
-    else delete DATA[DATA_KEY_DASH_UPCOMING_TASKS];
+    if (el.checked) {
+      DATA[DATA_KEY_DASH_UPCOMING_TASKS] = '1';
+      markDirty(DATA_KEY_DASH_UPCOMING_TASKS);
+    } else {
+      delete DATA[DATA_KEY_DASH_UPCOMING_TASKS];
+      markDeleted(DATA_KEY_DASH_UPCOMING_TASKS);
+    }
   } catch (_) {}
   saveData(DATA);
   refreshTodoViews();
@@ -1911,13 +2071,32 @@ function getWeekIndexForDate(date) {
 }
 
 function getEvents(key) { try { return JSON.parse(DATA[key+'-events'] || '[]'); } catch(e) { return []; } }
-function saveEvents(key, evs) { DATA[key+'-events'] = JSON.stringify(evs); saveData(DATA); }
+function saveEvents(key, evs) {
+  const dk = key + '-events';
+  DATA[dk] = JSON.stringify(evs);
+  markDirty(dk);
+  saveData(DATA);
+}
 
 function getRecurring()     { try { return JSON.parse(DATA['__recurring__'] || '[]'); } catch(e) { return []; } }
-function saveRecurring(arr) { DATA['__recurring__'] = JSON.stringify(arr); saveData(DATA); }
+function saveRecurring(arr) {
+  DATA['__recurring__'] = JSON.stringify(arr);
+  markDirty('__recurring__');
+  saveData(DATA);
+}
 
 function getFlights(key) { try { return JSON.parse(DATA[key+'-flights'] || '[]'); } catch(e) { return []; } }
-function saveFlights(key, arr) { DATA[key+'-flights'] = JSON.stringify(arr); saveData(DATA); }
+function saveFlights(key, arr) {
+  const dk = key + '-flights';
+  const normalized = arr.map((f, i) => {
+    if (!f) return f;
+    if (f.id) return f;
+    return { ...f, id: 'fl-' + Date.now().toString(36) + '-' + i + '-' + Math.random().toString(36).slice(2, 6) };
+  });
+  DATA[dk] = JSON.stringify(normalized);
+  markDirty(dk);
+  saveData(DATA);
+}
 
 function recurringApplies(ev, date) {
   const d = new Date(date); d.setHours(0,0,0,0);
@@ -1998,11 +2177,13 @@ function getDominantStatus(days) {
 function cycleStatus(key) {
   const s = DATA[key+'-status']||null; const idx = STATUSES.indexOf(s);
   DATA[key+'-status'] = idx >= STATUSES.length-1 ? null : STATUSES[idx+1];
+  markDirty(key + '-status');
   saveData(DATA); render();
 }
 
 function setStatus(key, status) {
   DATA[key+'-status'] = DATA[key+'-status'] === status ? null : status;
+  markDirty(key + '-status');
   saveData(DATA); render();
 }
 
@@ -2325,7 +2506,7 @@ function renderDay() {
     btn.addEventListener('click', () => { setStatus(key, btn.dataset.s); });
   });
   hero.querySelector('#dv-loc').addEventListener('input', e => { setDayLocation(key, e.target.value); });
-  hero.querySelector('#dv-note').addEventListener('input', e => { DATA[key] = e.target.value; saveData(DATA); });
+  hero.querySelector('#dv-note').addEventListener('input', e => { DATA[key] = e.target.value; markDirty(key); saveData(DATA); });
 
   el.appendChild(hero);
 
@@ -2734,6 +2915,7 @@ async function lookupFlight(idx) {
 function toggleModalTag(status) {
   const cur = DATA[modalDk+'-status']||null;
   DATA[modalDk+'-status'] = cur === status ? null : status;
+  markDirty(modalDk + '-status');
   saveData(DATA);
   STATUSES.forEach(s => {
     document.getElementById('mtag-'+s).className = 'modal-tag-btn t-'+s+(DATA[modalDk+'-status']===s?' active':'');
@@ -2744,6 +2926,7 @@ function saveModal() {
   if (modalDk) {
     setDayLocation(modalDk, document.getElementById('modal-location').value);
     DATA[modalDk] = document.getElementById('modal-note').value;
+    markDirty(modalDk);
 
     const regularToSave   = modalEvents.filter(ev => !ev._recurring && (ev.title||ev.business||ev.startTime||ev.endTime));
     const recurringToSave = modalEvents.filter(ev =>  ev._recurring && (ev.title||ev.business||ev.startTime||ev.endTime));
@@ -3130,7 +3313,11 @@ function ensureProjectsMigrated() {
       if (t && !t.projectId) { t.projectId = GENERAL_PID; changedTodos = true; }
     }
     if (changedTodos) DATA[TODOS_KEY] = JSON.stringify(todos);
-    if (addedGeneral || changedTodos || plateFix || dashHiddenFix) saveData(DATA);
+    if (addedGeneral || changedTodos || plateFix || dashHiddenFix) {
+      if (addedGeneral) markDirty(PROJECTS_KEY);
+      if (changedTodos) markDirty(TODOS_KEY);
+      saveData(DATA);
+    }
     else saveLocal(DATA);
   } catch (e) { console.warn('[FP] project migrate', e); }
 }
@@ -3144,6 +3331,7 @@ function getProjects() {
 
 function saveProjects(arr) {
   DATA[PROJECTS_KEY] = JSON.stringify(arr);
+  markDirty(PROJECTS_KEY);
   saveData(DATA);
 }
 
@@ -3152,7 +3340,13 @@ function getTodos() {
   try { return JSON.parse(DATA[TODOS_KEY] || '[]'); } catch (_) { return []; }
 }
 
-function saveTodos(arr) { DATA[TODOS_KEY] = JSON.stringify(arr); saveData(DATA); }
+function saveTodos(arr) {
+  DATA[TODOS_KEY] = JSON.stringify(arr);
+  saveLocal(DATA);
+  setSyncStatus('unsaved', '● Unsaved');
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(pushToRemote, 300);
+}
 function newTodoId() { return 't-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
 
 function touchProject(pid) {
@@ -3261,8 +3455,13 @@ function getDashShowHidden() {
 
 function onDashShowHiddenChange(el) {
   try {
-    if (el.checked) DATA[DATA_KEY_DASH_SHOW_HIDDEN] = '1';
-    else delete DATA[DATA_KEY_DASH_SHOW_HIDDEN];
+    if (el.checked) {
+      DATA[DATA_KEY_DASH_SHOW_HIDDEN] = '1';
+      markDirty(DATA_KEY_DASH_SHOW_HIDDEN);
+    } else {
+      delete DATA[DATA_KEY_DASH_SHOW_HIDDEN];
+      markDeleted(DATA_KEY_DASH_SHOW_HIDDEN);
+    }
   } catch (_) {}
   saveData(DATA);
   refreshTodoViews();
@@ -3279,6 +3478,7 @@ function getDashboardTop3ProjectId() {
 
 function onDashboardTop3ProjectChange(val) {
   DATA[DATA_KEY_DASH_TOP3] = val;
+  markDirty(DATA_KEY_DASH_TOP3);
   saveData(DATA);
   refreshTodoViews();
 }

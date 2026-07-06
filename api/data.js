@@ -112,7 +112,13 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      let body = req.body;
+      if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch (_) { body = null; }
+      }
+      if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return res.status(400).json({ error: 'Invalid JSON body' });
+      }
 
       // Merge strategy: read current, merge incoming on top, write back.
       // This prevents one user from overwriting the other's changes on
@@ -127,6 +133,10 @@ module.exports = async function handler(req, res) {
         } else if (k === '__todos__' || k === '__projects__') {
           const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
           current[k] = mergeStoredJsonArrays(current[k], v, 'id', itemMerge);
+        } else if (k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__') {
+          // Empty client arrays must not wipe server items (stale local day data).
+          if (v === '[]' && current[k] && current[k] !== '[]') continue;
+          current[k] = mergeStoredJsonArrays(current[k], v, 'id');
         } else {
           current[k] = v;
         }
