@@ -1216,6 +1216,7 @@ let _deletedKeys= new Set();
 const PULL_INTERVAL_MS = 45000;
 const TODOS_SYNC_KEY = '__todos__';
 const PROJECTS_SYNC_KEY = '__projects__';
+const BACKGROUND_PULL_SKIP = new Set([TODOS_SYNC_KEY, PROJECTS_SYNC_KEY]);
 
 function hasPendingPush() {
   return _syncTimer != null || _pushing || _pushPending;
@@ -1225,6 +1226,10 @@ function shouldSkipRemoteKey(k) {
   if (_dirtyKeys.has(k) || _deletedKeys.has(k)) return true;
   if (k === TODOS_SYNC_KEY && hasPendingPush()) return true;
   return false;
+}
+
+function shouldBackgroundPullKey(k) {
+  return BACKGROUND_PULL_SKIP.has(k);
 }
 
 function isStoredArrayKey(k) {
@@ -1326,24 +1331,16 @@ async function pushToRemote() {
   if (_pushing) { _pushPending = true; return; }
   clearTimeout(_syncTimer);
   _syncTimer = null;
-  const payload = buildPushPayload();
-  if (!Object.keys(payload).length) {
-    if (_dirtyKeys.size || _deletedKeys.size) {
-      setTimeout(pushToRemote, 500);
-      return;
-    }
-    setSyncStatus('saved', '✓ Saved');
-    return;
-  }
   _pushing     = true;
   _pushPending = false;
   setSyncStatus('syncing', '⟳ Saving…');
   try {
     const r = await fetch('/api/data', {
-      method: 'POST', headers: apiHeaders(), body: JSON.stringify(payload)
+      method: 'POST', headers: apiHeaders(), body: JSON.stringify(DATA)
     });
     if (!r.ok) throw new Error(r.status);
-    clearPushState(payload);
+    _dirtyKeys.clear();
+    _deletedKeys.clear();
     setSyncStatus('saved', '✓ Saved');
   } catch(e) {
     console.warn('[FP] Push failed, retrying in 5s:', e);
@@ -1358,9 +1355,9 @@ async function pushToRemote() {
 
 async function syncNow() {
   clearTimeout(_syncTimer);
+  _syncTimer = null;
   flushAllTodoEdits();
   await pullFromRemote();
-  Object.keys(DATA).forEach(k => markDirty(k));
   await pushToRemote();
 }
 
@@ -1430,12 +1427,10 @@ function flushAllTodoEdits() {
 }
 
 function pushToRemoteKeepalive() {
-  const payload = buildPushPayload();
-  if (!Object.keys(payload).length) return;
   const s   = getSecret();
   const url = s ? `/api/data?secret=${encodeURIComponent(s)}` : '/api/data';
   try {
-    fetch(url, { method:'POST', headers:apiHeaders(), body:JSON.stringify(payload), keepalive:true });
+    fetch(url, { method:'POST', headers:apiHeaders(), body:JSON.stringify(DATA), keepalive:true });
   } catch (_) {}
 }
 
@@ -1453,7 +1448,7 @@ document.addEventListener('visibilitychange', () => {
     pushToRemoteKeepalive();
     return;
   }
-  pullFromRemote({ quiet: true });
+  pullFromRemote({ quiet: true, background: true });
 });
 
 function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
@@ -1494,13 +1489,17 @@ function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
 
 function mergeRemoteIntoData(remote, opts = {}) {
   const respectDirty = !!opts.respectDirty;
-  const skipKey = k => respectDirty && shouldSkipRemoteKey(k);
+  const background = !!opts.background;
+  const skipKey = k => {
+    if (background && shouldBackgroundPullKey(k)) return true;
+    return respectDirty && shouldSkipRemoteKey(k);
+  };
   let changed = false;
 
   for (const [k, v] of Object.entries(remote)) {
     if (skipKey(k)) continue;
     if (k === TODOS_SYNC_KEY || k === PROJECTS_SYNC_KEY) {
-      const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
+      const itemMerge = k === TODOS_SYNC_KEY ? mergeTodoObjects : null;
       const merged = mergeStoredJsonArrays(DATA[k], v, 'id', itemMerge);
       if (merged !== (DATA[k] || '[]')) { DATA[k] = merged; changed = true; }
     } else if (isStoredArrayKey(k)) {
@@ -1529,7 +1528,7 @@ async function pullFromRemote(opts = {}) {
     const r = await fetch('/api/data', { headers: apiHeaders() });
     if (!r.ok) throw new Error(r.status);
     const remote = await r.json();
-    const changed = mergeRemoteIntoData(remote, { respectDirty: true });
+    const changed = mergeRemoteIntoData(remote, { respectDirty: true, background: !!opts.background });
     if (changed) {
       saveLocal(DATA);
       render();
@@ -1548,7 +1547,7 @@ async function pullFromRemote(opts = {}) {
 }
 
 setInterval(() => {
-  if (document.visibilityState === 'visible') pullFromRemote({ quiet: true });
+  if (document.visibilityState === 'visible') pullFromRemote({ quiet: true, background: true });
 }, PULL_INTERVAL_MS);
 
 (async function syncOnLoad() {
@@ -3343,11 +3342,10 @@ function getTodos() {
 
 function saveTodos(arr) {
   DATA[TODOS_KEY] = JSON.stringify(arr);
-  markDirty(TODOS_KEY);
   saveLocal(DATA);
   setSyncStatus('unsaved', '● Unsaved');
   clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(pushToRemote, 400);
+  _syncTimer = setTimeout(pushToRemote, 300);
 }
 function newTodoId() { return 't-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
 
