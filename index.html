@@ -1604,6 +1604,7 @@ function flushAllTodoEdits() {
 }
 
 function pushToRemoteKeepalive() {
+  // Same payload as a normal save; used on tab close. Do not clear dirty flags here.
   try {
     fetch('/api/data', {
       method: 'POST',
@@ -1619,17 +1620,21 @@ function pushToRemoteKeepalive() {
 window.addEventListener('beforeunload', () => {
   clearTimeout(_syncTimer);
   flushAllTodoEdits();
-  pushToRemoteKeepalive();
+  if (_localDirty) pushToRemoteKeepalive();
 });
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') {
     flushAllTodoEdits();
-    clearTimeout(_syncTimer);
-    pushToRemoteKeepalive();
+    if (_localDirty) {
+      clearTimeout(_syncTimer);
+      _syncTimer = null;
+      pushToRemoteKeepalive();
+    }
     return;
   }
-  pullFromRemote({ quiet: true, background: true });
+  // Never pull on focus if we have unsaved work; otherwise refresh from server.
+  if (!_localDirty) pullFromRemote({ quiet: true, background: true });
 });
 
 function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
@@ -1684,14 +1689,10 @@ function mergeRemoteIntoData(remote, opts = {}) {
       const merged = mergeStoredJsonArrays(DATA[k], v, 'id', itemMerge);
       if (merged !== (DATA[k] || '[]')) { DATA[k] = merged; changed = true; }
     } else if (isStoredArrayKey(k)) {
-      if (!v || v === '[]') {
-        // Keep local flights/events when remote has nothing for that day.
-      } else if (!DATA[k] || DATA[k] === '[]') {
+      // Honor remote clears ('[]') — previously we kept stale local events forever.
+      if (DATA[k] !== v) {
         DATA[k] = v;
         changed = true;
-      } else {
-        const merged = mergeStoredJsonArrays(DATA[k], v, 'id');
-        if (merged !== DATA[k]) { DATA[k] = merged; changed = true; }
       }
     } else if (DATA[k] !== v) {
       DATA[k] = v;
@@ -2843,10 +2844,16 @@ function renderModalEvents() {
       </div>
     `;
 
-    // Delete button
+    // Delete button — persist immediately so refresh cannot resurrect the event
     card.querySelector('.event-delete-btn').addEventListener('click', e => {
-      modalEvents.splice(parseInt(e.target.dataset.idx), 1);
+      const i = parseInt(e.currentTarget.dataset.idx, 10);
+      if (Number.isNaN(i)) return;
+      modalEvents.splice(i, 1);
       renderModalEvents();
+      persistModalSchedule();
+      clearTimeout(_syncTimer);
+      _syncTimer = null;
+      pushToRemote();
     });
 
     // Regular field inputs
@@ -3001,8 +3008,14 @@ function renderModalFlights() {
     `;
 
     card.querySelector('.mfc-delete').addEventListener('click', e => {
-      modalFlights.splice(parseInt(e.target.dataset.flidx), 1);
+      const i = parseInt(e.currentTarget.dataset.flidx, 10);
+      if (Number.isNaN(i)) return;
+      modalFlights.splice(i, 1);
       renderModalFlights();
+      persistModalSchedule();
+      clearTimeout(_syncTimer);
+      _syncTimer = null;
+      pushToRemote();
     });
 
     card.querySelectorAll('.mfc-input[data-field]').forEach(inp => {
@@ -3093,44 +3106,55 @@ function toggleModalTag(status) {
   });
 }
 
+function persistModalSchedule() {
+  if (!modalDk) return;
+  const regularToSave   = modalEvents.filter(ev => !ev._recurring && (ev.title||ev.business||ev.startTime||ev.endTime));
+  const recurringToSave = modalEvents.filter(ev =>  ev._recurring && (ev.title||ev.business||ev.startTime||ev.endTime));
+
+  DATA[modalDk + '-events'] = JSON.stringify(regularToSave.map(ev => {
+    const {_recurring, _recurringId, ...rest} = ev; return rest;
+  }));
+  markDirty(modalDk + '-events');
+
+  const keptIds = new Set(recurringToSave.map(ev => ev._recurringId||ev.id).filter(Boolean));
+  let allRecurring = getRecurring()
+    .filter(r => !modalRecurringOriginalIds.includes(r.id) || keptIds.has(r.id));
+
+  recurringToSave.forEach(ev => {
+    const {_recurring, _recurringId, ...toSave} = ev;
+    if (!toSave.id) toSave.id = Date.now().toString();
+    const existIdx = allRecurring.findIndex(r => r.id === (_recurringId||toSave.id));
+    if (existIdx >= 0) allRecurring[existIdx] = toSave;
+    else allRecurring.push(toSave);
+  });
+  // If a recurring event was removed from this modal, drop it from the global store.
+  DATA['__recurring__'] = JSON.stringify(allRecurring);
+  markDirty('__recurring__');
+
+  const flightsToSave = modalFlights.filter(f => f.flightNum || f.airline || f.originCode || f.destCode);
+  const normalized = flightsToSave.map((f, i) => {
+    if (!f) return f;
+    if (f.id) return f;
+    return { ...f, id: 'fl-' + Date.now().toString(36) + '-' + i + '-' + Math.random().toString(36).slice(2, 6) };
+  });
+  DATA[modalDk + '-flights'] = JSON.stringify(normalized);
+  markDirty(modalDk + '-flights');
+
+  saveLocal(DATA);
+  schedulePush(0);
+}
+
 function saveModal() {
   if (modalDk) {
     setDayLocation(modalDk, document.getElementById('modal-location').value);
     DATA[modalDk] = document.getElementById('modal-note').value;
     markDirty(modalDk);
-
-    const regularToSave   = modalEvents.filter(ev => !ev._recurring && (ev.title||ev.business||ev.startTime||ev.endTime));
-    const recurringToSave = modalEvents.filter(ev =>  ev._recurring && (ev.title||ev.business||ev.startTime||ev.endTime));
-
-    // Save regular events for the day
-    saveEvents(modalDk, regularToSave.map(ev => {
-      const {_recurring, _recurringId, ...rest} = ev; return rest;
-    }));
-
-    // Update global recurring store
-    const keptIds = new Set(recurringToSave.map(ev => ev._recurringId||ev.id).filter(Boolean));
-    let allRecurring = getRecurring()
-      .filter(r => !modalRecurringOriginalIds.includes(r.id) || keptIds.has(r.id));
-
-    recurringToSave.forEach(ev => {
-      const {_recurring, _recurringId, ...toSave} = ev;
-      if (!toSave.id) toSave.id = Date.now().toString();
-      const existIdx = allRecurring.findIndex(r => r.id === (_recurringId||toSave.id));
-      if (existIdx >= 0) allRecurring[existIdx] = toSave;
-      else allRecurring.push(toSave);
-    });
-
-    saveRecurring(allRecurring);
-
-    // Save flights
-    const flightsToSave = modalFlights.filter(f => f.flightNum || f.airline || f.originCode || f.destCode);
-    saveFlights(modalDk, flightsToSave);
+    persistModalSchedule();
   }
 
   document.getElementById('modal-overlay').classList.remove('open');
   modalDk = null; modalDate = null; modalEvents = []; modalFlights = []; modalRecurringOriginalIds = [];
   render();
-  // Persist deletes/edits immediately — don't wait for debounce (avoids resurrecting deleted items).
   clearTimeout(_syncTimer);
   _syncTimer = null;
   pushToRemote();
