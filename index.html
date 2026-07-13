@@ -629,6 +629,57 @@
   #sync-btn.error    { color: #D85A30; border-color: #D85A30; cursor: pointer; }
   #sync-btn.unsaved  { color: #D85A30; border-color: #D85A30; }
 
+  #user-chip {
+    font-size: 11px; font-family: 'DM Sans', sans-serif; color: var(--text-muted);
+    display: none; align-items: center; gap: 8px;
+  }
+  #user-chip.visible { display: flex; }
+  #logout-btn {
+    font-size: 11px; font-family: 'DM Sans', sans-serif; font-weight: 500;
+    padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+    background: none; cursor: pointer; color: var(--text-muted);
+  }
+  #logout-btn:hover { color: var(--text); border-color: var(--text-muted); }
+
+  #login-overlay {
+    display: none; position: fixed; inset: 0; z-index: 2000;
+    background: rgba(28, 25, 23, 0.45);
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  #login-overlay.open { display: flex; }
+  .login-card {
+    width: min(400px, 100%);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 26px 24px;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.18);
+  }
+  .login-card h1 {
+    font-family: 'DM Serif Display', serif; font-size: 28px; margin: 0 0 6px; color: var(--text);
+  }
+  .login-card p {
+    margin: 0 0 18px; font-size: 13px; color: var(--text-muted); line-height: 1.45;
+  }
+  .login-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .login-field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+  .login-field input {
+    font-family: 'DM Sans', sans-serif; font-size: 15px; padding: 10px 12px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    background: var(--surface2); color: var(--text);
+  }
+  .login-error {
+    display: none; margin: 0 0 12px; font-size: 13px; color: #D85A30;
+  }
+  .login-error.visible { display: block; }
+  .login-submit {
+    width: 100%; margin-top: 4px; padding: 11px 14px;
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    border: none; border-radius: var(--radius-sm); cursor: pointer;
+    background: var(--text); color: var(--surface);
+  }
+  .login-submit:disabled { opacity: 0.6; cursor: wait; }
+
   /* ══════════ TODO VIEW ══════════ */
   #todo-view { display: none; flex-direction: column; gap: 28px; max-width: 760px; margin: 0 auto; }
 
@@ -1074,9 +1125,29 @@
 </head>
 <body>
 
+<div id="login-overlay" role="dialog" aria-modal="true" aria-labelledby="login-title">
+  <form class="login-card" onsubmit="return handleLoginSubmit(event)">
+    <h1 id="login-title">Field Planner</h1>
+    <p>Sign in to sync your shared calendar and todos.</p>
+    <div class="login-field">
+      <label for="login-username">Username</label>
+      <input id="login-username" name="username" autocomplete="username" required />
+    </div>
+    <div class="login-field">
+      <label for="login-password">Password</label>
+      <input id="login-password" name="password" type="password" autocomplete="current-password" required />
+    </div>
+    <div id="login-error" class="login-error"></div>
+    <button type="submit" class="login-submit" id="login-submit">Sign in</button>
+  </form>
+</div>
+
 <header>
   <div class="brand">Field Planner <span>by FireTex</span></div>
   <div class="header-controls">
+    <span id="user-chip"><span id="user-name"></span>
+      <button type="button" id="logout-btn" onclick="logout()">Log out</button>
+    </span>
     <button id="sync-btn" onclick="syncNow()" title="Pull latest changes, then save yours">⟳ Sync</button>
     <div class="view-toggle">
       <button class="view-btn active" id="btn-dashboard" onclick="setView('dashboard')">Home</button>
@@ -1194,17 +1265,97 @@ function getWeekStart(date) {
 
 // ── DATA LAYER ───────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'fp-data';
-const SECRET_KEY  = 'fp-secret';
 function loadLocal()   { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; } }
 function saveLocal(d)  { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
 
-(function initSecret() {
-  const s = new URLSearchParams(window.location.search).get('secret');
-  if (s) { localStorage.setItem(SECRET_KEY, s); window.history.replaceState({}, '', window.location.pathname); }
-})();
+function apiHeaders() { return { 'Content-Type': 'application/json' }; }
+function apiFetch(url, opts = {}) {
+  return fetch(url, { ...opts, credentials: 'include', headers: { ...apiHeaders(), ...(opts.headers || {}) } });
+}
 
-function getSecret()  { return localStorage.getItem(SECRET_KEY) || ''; }
-function apiHeaders() { const h = {'Content-Type':'application/json'}; const s = getSecret(); if (s) h['Authorization'] = 'Bearer ' + s; return h; }
+let CURRENT_USER = null;
+
+function showLogin(message) {
+  const overlay = document.getElementById('login-overlay');
+  const err = document.getElementById('login-error');
+  if (err) {
+    if (message) { err.textContent = message; err.classList.add('visible'); }
+    else { err.textContent = ''; err.classList.remove('visible'); }
+  }
+  if (overlay) overlay.classList.add('open');
+  document.getElementById('user-chip')?.classList.remove('visible');
+  setTimeout(() => document.getElementById('login-username')?.focus(), 50);
+}
+
+function hideLogin() {
+  document.getElementById('login-overlay')?.classList.remove('open');
+  document.getElementById('login-error')?.classList.remove('visible');
+}
+
+function setCurrentUser(user) {
+  CURRENT_USER = user;
+  const chip = document.getElementById('user-chip');
+  const name = document.getElementById('user-name');
+  if (user && chip && name) {
+    name.textContent = user.username;
+    chip.classList.add('visible');
+  } else if (chip) {
+    chip.classList.remove('visible');
+  }
+}
+
+async function handleLoginSubmit(e) {
+  e.preventDefault();
+  const username = document.getElementById('login-username')?.value.trim();
+  const password = document.getElementById('login-password')?.value || '';
+  const btn = document.getElementById('login-submit');
+  const err = document.getElementById('login-error');
+  if (!username || !password) return false;
+  if (btn) btn.disabled = true;
+  if (err) { err.textContent = ''; err.classList.remove('visible'); }
+  try {
+    const r = await apiFetch('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Login failed');
+    setCurrentUser(data.user);
+    hideLogin();
+    const pw = document.getElementById('login-password');
+    if (pw) pw.value = '';
+    await syncOnLoad();
+  } catch (ex) {
+    if (err) { err.textContent = ex.message || 'Login failed'; err.classList.add('visible'); }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+  return false;
+}
+
+async function logout() {
+  try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch (_) {}
+  setCurrentUser(null);
+  showLogin();
+  setSyncStatus('error', '⚠ Signed out');
+}
+
+async function ensureAuth() {
+  try {
+    const r = await apiFetch('/api/auth/me');
+    if (!r.ok) {
+      showLogin();
+      return false;
+    }
+    const data = await r.json();
+    setCurrentUser(data.user);
+    hideLogin();
+    return true;
+  } catch (_) {
+    showLogin('Could not reach the server.');
+    return false;
+  }
+}
 
 let DATA        = loadLocal();
 let _syncTimer  = null;
@@ -1336,9 +1487,12 @@ async function pushToRemote() {
   setSyncStatus('syncing', '⟳ Saving…');
   try {
     const r = await fetch('/api/data', {
-      method: 'POST', headers: apiHeaders(), body: JSON.stringify(DATA)
+      method: 'POST', headers: apiHeaders(), body: JSON.stringify(DATA), credentials: 'include'
     });
-    if (!r.ok) throw new Error(r.status);
+    if (!r.ok) {
+      if (r.status === 401) { showLogin('Please sign in again.'); throw new Error(401); }
+      throw new Error(r.status);
+    }
     _dirtyKeys.clear();
     _deletedKeys.clear();
     setSyncStatus('saved', '✓ Saved');
@@ -1427,10 +1581,14 @@ function flushAllTodoEdits() {
 }
 
 function pushToRemoteKeepalive() {
-  const s   = getSecret();
-  const url = s ? `/api/data?secret=${encodeURIComponent(s)}` : '/api/data';
   try {
-    fetch(url, { method:'POST', headers:apiHeaders(), body:JSON.stringify(DATA), keepalive:true });
+    fetch('/api/data', {
+      method: 'POST',
+      headers: apiHeaders(),
+      body: JSON.stringify(DATA),
+      credentials: 'include',
+      keepalive: true,
+    });
   } catch (_) {}
 }
 
@@ -1525,8 +1683,11 @@ async function pullFromRemote(opts = {}) {
   _pulling = true;
   try {
     flushAllTodoEdits();
-    const r = await fetch('/api/data', { headers: apiHeaders() });
-    if (!r.ok) throw new Error(r.status);
+    const r = await fetch('/api/data', { headers: apiHeaders(), credentials: 'include' });
+    if (!r.ok) {
+      if (r.status === 401) { showLogin('Please sign in again.'); return false; }
+      throw new Error(r.status);
+    }
     const remote = await r.json();
     const changed = mergeRemoteIntoData(remote, { respectDirty: true, background: !!opts.background });
     if (changed) {
@@ -1550,18 +1711,25 @@ setInterval(() => {
   if (document.visibilityState === 'visible') pullFromRemote({ quiet: true, background: true });
 }, PULL_INTERVAL_MS);
 
-(async function syncOnLoad() {
+async function syncOnLoad() {
   setSyncStatus('syncing', '⟳ Syncing…');
   try {
-    const r = await fetch('/api/data', {headers: apiHeaders()});
-    if (!r.ok) throw new Error(r.status);
+    const r = await fetch('/api/data', { headers: apiHeaders(), credentials: 'include' });
+    if (!r.ok) {
+      if (r.status === 401) {
+        showLogin();
+        setSyncStatus('error', '⚠ Sign in');
+        return;
+      }
+      throw new Error(r.status);
+    }
     const remote = await r.json();
     const localHad    = Object.keys(DATA).length > 0;
     const remoteEmpty = Object.keys(remote).length === 0;
 
     // Merge: remote wins for scalar keys (notes, status, location).
     // For event arrays: if remote is empty but local has real data,
-    // keep local and push it back up to repair Redis.
+    // keep local and push it back up to repair the server store.
     // Todos/projects merge by task/project id so fields (due, block, text) aren't lost.
     let needsPush = remoteEmpty && localHad;
     for (const [k, v] of Object.entries(remote)) {
@@ -1610,7 +1778,7 @@ setInterval(() => {
 
     if (needsPush) {
       Object.keys(DATA).forEach(k => markDirty(k));
-      await pushToRemote(); // recovers local-only data into Redis
+      await pushToRemote();
     } else {
       setSyncStatus('saved', '✓ Saved');
     }
@@ -1621,6 +1789,17 @@ setInterval(() => {
     render();
     setSyncStatus('error', '⚠ Offline');
   }
+}
+
+(async function boot() {
+  const ok = await ensureAuth();
+  if (!ok) {
+    setSyncStatus('error', '⚠ Sign in');
+    migrateDashPrefsIntoData();
+    migrateWeekLocationsToDays();
+    return;
+  }
+  await syncOnLoad();
 })();
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────

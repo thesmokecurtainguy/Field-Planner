@@ -1,11 +1,9 @@
-// Vercel Serverless Function — Upstash Redis REST API
-// Env vars: KV_REST_API_URL, KV_REST_API_TOKEN
-// Redis key "fp-data" stores one JSON object (POST from client). Typical keys:
-//   YYYY-MM-DD-day notes, *-events / *-flights, __recurring__, __todos__, __projects__,
-//   fp-dash-top3-project, fp-dash-show-hidden-plates, ...
-// __todos__ / __projects__ hold JSON.stringify(arrays); todo objects may include importance,
-// project objects may include dashboardHidden — both sync with the blob.
-const REDIS_KEY = 'fp-data';
+// Vercel Serverless — household JSON blob in Railway Postgres.
+// Env: DATABASE_URL, SESSION_SECRET
+// Optional one-time import: KV_REST_API_URL, KV_REST_API_TOKEN
+// Seed users: AUTH_JOHN_PASSWORD, AUTH_MELISSA_PASSWORD
+const { cors, requireUser } = require('../lib/auth');
+const { getAppData, setAppData } = require('../lib/db');
 
 const TODO_OPT_FIELDS = ['dueBy', 'blockDate', 'blockStart', 'blockEnd', 'importance'];
 
@@ -13,7 +11,6 @@ function todoTs(t) {
   return (t && (t.updatedAt || t.createdAt)) || 0;
 }
 
-/** Merge two todo records — newer updatedAt wins; null in the newer copy clears optional fields. */
 function mergeTodoObjects(prev, incoming) {
   if (!prev) return { ...incoming };
   if (!incoming) return { ...prev };
@@ -63,51 +60,16 @@ function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
   return JSON.stringify(order);
 }
 
-async function redis(method, ...args) {
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
-  if (!url || !token) throw new Error('Missing KV_REST_API_URL or KV_REST_API_TOKEN env vars');
-
-  const res = await fetch(`${url}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify([method, ...args]),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Redis error ${res.status}: ${text}`);
-  }
-  return res.json();
-}
-
 module.exports = async function handler(req, res) {
-  // CORS — allow the Vercel-hosted frontend (same origin) and local dev
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
+  cors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
 
-  // Auth: require a shared secret so strangers can't read/write your calendar.
-  // Set FP_API_SECRET in Vercel env vars, then pass it from the client as
-  // Authorization: Bearer <secret>.
-  const secret = process.env.FP_API_SECRET;
-  if (secret) {
-    const authHeader = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
-    const authQuery  = (req.query && req.query.secret) || '';
-    if (authHeader !== secret && authQuery !== secret) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-  }
+  const user = requireUser(req, res);
+  if (!user) return;
 
   try {
     if (req.method === 'GET') {
-      const { result } = await redis('GET', REDIS_KEY);
-      const data = result ? JSON.parse(result) : {};
+      const data = await getAppData();
       return res.status(200).json(data);
     }
 
@@ -120,13 +82,8 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid JSON body' });
       }
 
-      // Merge strategy: read current, merge incoming on top, write back.
-      // This prevents one user from overwriting the other's changes on
-      // keys they didn't touch.
-      const { result: existing } = await redis('GET', REDIS_KEY);
-      const current = existing ? JSON.parse(existing) : {};
+      const current = await getAppData();
 
-      // Null / empty-string values are deletions
       for (const [k, v] of Object.entries(body)) {
         if (v === null || v === '') {
           delete current[k];
@@ -134,7 +91,6 @@ module.exports = async function handler(req, res) {
           const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
           current[k] = mergeStoredJsonArrays(current[k], v, 'id', itemMerge);
         } else if (k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__') {
-          // Empty client arrays must not wipe server items (stale local day data).
           if (v === '[]' && current[k] && current[k] !== '[]') continue;
           current[k] = mergeStoredJsonArrays(current[k], v, 'id');
         } else {
@@ -142,7 +98,7 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      await redis('SET', REDIS_KEY, JSON.stringify(current));
+      await setAppData(current);
       return res.status(200).json({ ok: true });
     }
 
@@ -151,4 +107,4 @@ module.exports = async function handler(req, res) {
     console.error(err);
     return res.status(500).json({ error: err.message });
   }
-}
+};

@@ -1,0 +1,8 @@
+{
+  "name": "field-planner",
+  "private": true,
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "pg": "^8.13.1"
+  }
+}
