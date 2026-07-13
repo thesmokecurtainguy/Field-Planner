@@ -1148,7 +1148,7 @@
     <span id="user-chip"><span id="user-name"></span>
       <button type="button" id="logout-btn" onclick="logout()">Log out</button>
     </span>
-    <button id="sync-btn" onclick="syncNow()" title="Pull latest changes, then save yours">⟳ Sync</button>
+    <button id="sync-btn" onclick="syncNow()" title="Save your changes to the cloud">⟳ Sync</button>
     <div class="view-toggle">
       <button class="view-btn active" id="btn-dashboard" onclick="setView('dashboard')">Home</button>
       <button class="view-btn"        id="btn-grid"      onclick="setView('grid')">Calendar</button>
@@ -1362,6 +1362,7 @@ let _syncTimer  = null;
 let _pushing    = false;
 let _pushPending= false;
 let _pulling    = false;
+let _localDirty = false;
 let _dirtyKeys  = new Set();
 let _deletedKeys= new Set();
 const PULL_INTERVAL_MS = 45000;
@@ -1370,10 +1371,11 @@ const PROJECTS_SYNC_KEY = '__projects__';
 const BACKGROUND_PULL_SKIP = new Set([TODOS_SYNC_KEY, PROJECTS_SYNC_KEY]);
 
 function hasPendingPush() {
-  return _syncTimer != null || _pushing || _pushPending;
+  return _localDirty || _syncTimer != null || _pushing || _pushPending;
 }
 
 function shouldSkipRemoteKey(k) {
+  if (_localDirty) return true;
   if (_dirtyKeys.has(k) || _deletedKeys.has(k)) return true;
   if (k === TODOS_SYNC_KEY && hasPendingPush()) return true;
   return false;
@@ -1431,6 +1433,7 @@ function setSyncStatus(state, label) {
 
 function saveData(d) {
   saveLocal(d);
+  _localDirty = true;
   setSyncStatus('unsaved', '● Unsaved');
   clearTimeout(_syncTimer);
   _syncTimer = setTimeout(pushToRemote, 800);
@@ -1493,6 +1496,7 @@ async function pushToRemote() {
       if (r.status === 401) { showLogin('Please sign in again.'); throw new Error(401); }
       throw new Error(r.status);
     }
+    _localDirty = false;
     _dirtyKeys.clear();
     _deletedKeys.clear();
     setSyncStatus('saved', '✓ Saved');
@@ -1511,7 +1515,7 @@ async function syncNow() {
   clearTimeout(_syncTimer);
   _syncTimer = null;
   flushAllTodoEdits();
-  await pullFromRemote();
+  // Save only — never pull first (that was overwriting local edits with stale server data).
   await pushToRemote();
 }
 
@@ -1555,6 +1559,7 @@ function flushPendingTodoText() {
   touchTodo(t);
   DATA[TODOS_SYNC_KEY] = JSON.stringify(todos);
   markDirty(TODOS_SYNC_KEY);
+  _localDirty = true;
   saveLocal(DATA);
   return true;
 }
@@ -1574,6 +1579,7 @@ function flushAllTodoEdits() {
     if (changed) {
       DATA[TODOS_SYNC_KEY] = JSON.stringify(todos);
       markDirty(TODOS_SYNC_KEY);
+      _localDirty = true;
       saveLocal(DATA);
     }
   }
@@ -1679,10 +1685,11 @@ function mergeRemoteIntoData(remote, opts = {}) {
 }
 
 async function pullFromRemote(opts = {}) {
-  if (_pulling || _pushing) return false;
+  if (_pulling || _pushing || _localDirty || _syncTimer != null) return false;
   _pulling = true;
   try {
     flushAllTodoEdits();
+    if (_localDirty) return false;
     const r = await fetch('/api/data', { headers: apiHeaders(), credentials: 'include' });
     if (!r.ok) {
       if (r.status === 401) { showLogin('Please sign in again.'); return false; }
@@ -1694,7 +1701,7 @@ async function pullFromRemote(opts = {}) {
       saveLocal(DATA);
       render();
       if (!opts.quiet) setSyncStatus('saved', '✓ Updated');
-    } else if (!opts.quiet && _dirtyKeys.size === 0 && _deletedKeys.size === 0) {
+    } else if (!opts.quiet && !_localDirty) {
       setSyncStatus('saved', '✓ Saved');
     }
     return changed;
@@ -1724,64 +1731,32 @@ async function syncOnLoad() {
       throw new Error(r.status);
     }
     const remote = await r.json();
-    const localHad    = Object.keys(DATA).length > 0;
+    const local = loadLocal();
     const remoteEmpty = Object.keys(remote).length === 0;
+    const localHad = Object.keys(local).length > 0;
 
-    // Merge: remote wins for scalar keys (notes, status, location).
-    // For event arrays: if remote is empty but local has real data,
-    // keep local and push it back up to repair the server store.
-    // Todos/projects merge by task/project id so fields (due, block, text) aren't lost.
-    let needsPush = remoteEmpty && localHad;
-    for (const [k, v] of Object.entries(remote)) {
-      if (k === '__todos__' || k === '__projects__') {
-        const localRaw = DATA[k];
-        const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
-        const merged = mergeStoredJsonArrays(v, localRaw, 'id', itemMerge);
-        if (localRaw && merged !== v) needsPush = true;
-        DATA[k] = merged;
-      } else if (isStoredArrayKey(k)) {
-        if (!v || v === '[]') {
-          if (DATA[k] && DATA[k] !== '[]') needsPush = true;
-        } else if (!DATA[k] || DATA[k] === '[]') {
-          DATA[k] = v;
-        } else {
-          DATA[k] = mergeStoredJsonArrays(DATA[k], v, 'id');
-        }
-      } else {
-        DATA[k] = v;
-      }
+    // Server is source of truth after login. Only seed the server from local
+    // when the database is empty (first migration / empty Postgres).
+    if (remoteEmpty && localHad) {
+      DATA = { ...local };
+      saveLocal(DATA);
+      migrateDashPrefsIntoData();
+      migrateWeekLocationsToDays();
+      render();
+      _localDirty = true;
+      await pushToRemote();
+      return;
     }
 
-    // Edits made while the fetch was in flight live in localStorage — fold them in.
-    const freshLocal = loadLocal();
-    for (const k of ['__todos__', '__projects__']) {
-      if (!freshLocal[k]) continue;
-      const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
-      const merged = mergeStoredJsonArrays(DATA[k], freshLocal[k], 'id', itemMerge);
-      if (merged !== DATA[k]) {
-        DATA[k] = merged;
-        needsPush = true;
-      }
-    }
-
-    // Also push if local has any keys that remote doesn't have at all
-    if (!needsPush && localHad) {
-      needsPush = Object.keys(DATA).some(k =>
-        !(k in remote) && DATA[k] && DATA[k] !== '' && DATA[k] !== '[]'
-      );
-    }
-
+    DATA = { ...remote };
+    _localDirty = false;
+    _dirtyKeys.clear();
+    _deletedKeys.clear();
     saveLocal(DATA);
     migrateDashPrefsIntoData();
     migrateWeekLocationsToDays();
     render();
-
-    if (needsPush) {
-      Object.keys(DATA).forEach(k => markDirty(k));
-      await pushToRemote();
-    } else {
-      setSyncStatus('saved', '✓ Saved');
-    }
+    setSyncStatus('saved', '✓ Saved');
   } catch(e) {
     console.warn('[FP] Remote fetch failed, using local cache:', e);
     migrateDashPrefsIntoData();
@@ -3521,6 +3496,8 @@ function getTodos() {
 
 function saveTodos(arr) {
   DATA[TODOS_KEY] = JSON.stringify(arr);
+  markDirty(TODOS_KEY);
+  _localDirty = true;
   saveLocal(DATA);
   setSyncStatus('unsaved', '● Unsaved');
   clearTimeout(_syncTimer);
