@@ -1363,6 +1363,7 @@ let _pushing    = false;
 let _pushPending= false;
 let _pulling    = false;
 let _localDirty = false;
+let _saveEpoch  = 0;
 let _dirtyKeys  = new Set();
 let _deletedKeys= new Set();
 const PULL_INTERVAL_MS = 45000;
@@ -1419,7 +1420,6 @@ function clearPushState(payload) {
       return;
     }
     if (!_dirtyKeys.has(k)) return;
-    // Keep dirty if the user edited again while the push was in flight.
     if (DATA[k] === payload[k]) _dirtyKeys.delete(k);
   });
 }
@@ -1431,12 +1431,17 @@ function setSyncStatus(state, label) {
   btn.textContent = label;
 }
 
-function saveData(d) {
-  saveLocal(d);
+function schedulePush(delayMs) {
   _localDirty = true;
+  _saveEpoch += 1;
   setSyncStatus('unsaved', '● Unsaved');
   clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(pushToRemote, 800);
+  _syncTimer = setTimeout(pushToRemote, delayMs);
+}
+
+function saveData(d) {
+  saveLocal(d);
+  schedulePush(800);
 }
 
 /** Home dashboard prefs — top-level keys on DATA, POSTed to `/api/data` with the rest of the blob. */
@@ -1485,21 +1490,31 @@ async function pushToRemote() {
   if (_pushing) { _pushPending = true; return; }
   clearTimeout(_syncTimer);
   _syncTimer = null;
+  const epochAtSend = _saveEpoch;
+  const snapshot = JSON.stringify(DATA);
   _pushing     = true;
   _pushPending = false;
   setSyncStatus('syncing', '⟳ Saving…');
   try {
     const r = await fetch('/api/data', {
-      method: 'POST', headers: apiHeaders(), body: JSON.stringify(DATA), credentials: 'include'
+      method: 'POST', headers: apiHeaders(), body: snapshot, credentials: 'include'
     });
     if (!r.ok) {
       if (r.status === 401) { showLogin('Please sign in again.'); throw new Error(401); }
       throw new Error(r.status);
     }
-    _localDirty = false;
-    _dirtyKeys.clear();
-    _deletedKeys.clear();
-    setSyncStatus('saved', '✓ Saved');
+    // If the user edited/deleted while this request was in flight, keep dirty and push again.
+    // Otherwise an older in-flight save can resurrect deleted items.
+    if (epochAtSend === _saveEpoch && JSON.stringify(DATA) === snapshot) {
+      _localDirty = false;
+      _dirtyKeys.clear();
+      _deletedKeys.clear();
+      setSyncStatus('saved', '✓ Saved');
+    } else {
+      _localDirty = true;
+      _pushPending = true;
+      setSyncStatus('unsaved', '● Unsaved');
+    }
   } catch(e) {
     console.warn('[FP] Push failed, retrying in 5s:', e);
     setSyncStatus('error', '⚠ Retry…');
@@ -1560,6 +1575,7 @@ function flushPendingTodoText() {
   DATA[TODOS_SYNC_KEY] = JSON.stringify(todos);
   markDirty(TODOS_SYNC_KEY);
   _localDirty = true;
+  _saveEpoch += 1;
   saveLocal(DATA);
   return true;
 }
@@ -1580,6 +1596,7 @@ function flushAllTodoEdits() {
       DATA[TODOS_SYNC_KEY] = JSON.stringify(todos);
       markDirty(TODOS_SYNC_KEY);
       _localDirty = true;
+      _saveEpoch += 1;
       saveLocal(DATA);
     }
   }
@@ -3113,6 +3130,10 @@ function saveModal() {
   document.getElementById('modal-overlay').classList.remove('open');
   modalDk = null; modalDate = null; modalEvents = []; modalFlights = []; modalRecurringOriginalIds = [];
   render();
+  // Persist deletes/edits immediately — don't wait for debounce (avoids resurrecting deleted items).
+  clearTimeout(_syncTimer);
+  _syncTimer = null;
+  pushToRemote();
 }
 
 function handleOverlayClick(e) {
@@ -3132,6 +3153,12 @@ function refreshTodoViews() {
 }
 
 function setView(v) {
+  flushOpenTodoEdits();
+  if (_localDirty || _syncTimer != null) {
+    clearTimeout(_syncTimer);
+    _syncTimer = null;
+    pushToRemote();
+  }
   currentView = v;
   document.getElementById('dashboard-view').style.display = v==='dashboard' ? 'flex'  : 'none';
   document.getElementById('grid-view').style.display      = v==='grid'      ? 'block' : 'none';
@@ -3497,11 +3524,8 @@ function getTodos() {
 function saveTodos(arr) {
   DATA[TODOS_KEY] = JSON.stringify(arr);
   markDirty(TODOS_KEY);
-  _localDirty = true;
   saveLocal(DATA);
-  setSyncStatus('unsaved', '● Unsaved');
-  clearTimeout(_syncTimer);
-  _syncTimer = setTimeout(pushToRemote, 300);
+  schedulePush(300);
 }
 function newTodoId() { return 't-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7); }
 
@@ -4012,6 +4036,9 @@ function deleteTodo(id) {
   saveTodos(next);
   if (pid) touchProject(pid);
   refreshTodoViews();
+  clearTimeout(_syncTimer);
+  _syncTimer = null;
+  pushToRemote();
 }
 
 function moveTodo(id, dir) {
