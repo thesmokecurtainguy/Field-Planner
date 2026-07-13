@@ -2,11 +2,13 @@
 // Env: DATABASE_URL, SESSION_SECRET
 // Optional one-time import: KV_REST_API_URL, KV_REST_API_TOKEN
 // Seed users: AUTH_JOHN_PASSWORD, AUTH_MELISSA_PASSWORD
+// Concurrency: clients send X-FP-Base-Revision from the last GET; stale writes get 409.
 const { cors, requireUser } = require('../lib/auth');
-const { getAppData, setAppData } = require('../lib/db');
+const { getAppDataWithMeta, setAppData } = require('../lib/db');
 
 module.exports = async function handler(req, res) {
   cors(res);
+  res.setHeader('Access-Control-Expose-Headers', 'X-FP-Revision');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   const user = requireUser(req, res);
@@ -14,8 +16,9 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET') {
-      const data = await getAppData();
-      return res.status(200).json(data);
+      const { payload, revision } = await getAppDataWithMeta();
+      res.setHeader('X-FP-Revision', String(revision));
+      return res.status(200).json(payload);
     }
 
     if (req.method === 'POST') {
@@ -27,10 +30,22 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid JSON body' });
       }
 
-      // Last-write-wins: client sends the full household blob.
-      // Avoid merge/empty-string deletion bugs that were wiping locations and edits.
-      const saved = await setAppData(body);
-      return res.status(200).json({ ok: true, keys: Object.keys(saved).length });
+      const baseRevision = req.headers['x-fp-base-revision'];
+      try {
+        const saved = await setAppData(body, baseRevision);
+        res.setHeader('X-FP-Revision', String(saved.revision));
+        return res.status(200).json({ ok: true, revision: saved.revision, keys: Object.keys(saved.payload).length });
+      } catch (err) {
+        if (err && err.code === 'CONFLICT' && err.conflict) {
+          res.setHeader('X-FP-Revision', String(err.conflict.revision));
+          return res.status(409).json({
+            error: 'Stale data — refreshed from server',
+            revision: err.conflict.revision,
+            data: err.conflict.payload,
+          });
+        }
+        throw err;
+      }
     }
 
     return res.status(405).json({ error: 'Method not allowed' });

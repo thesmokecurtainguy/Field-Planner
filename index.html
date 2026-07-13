@@ -1268,9 +1268,11 @@ const STORAGE_KEY = 'fp-data';
 function loadLocal()   { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e) { return {}; } }
 function saveLocal(d)  { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
 
-function apiHeaders() { return { 'Content-Type': 'application/json' }; }
+function apiHeaders(extra) {
+  return { 'Content-Type': 'application/json', ...(extra || {}) };
+}
 function apiFetch(url, opts = {}) {
-  return fetch(url, { ...opts, credentials: 'include', headers: { ...apiHeaders(), ...(opts.headers || {}) } });
+  return fetch(url, { ...opts, credentials: 'include', headers: { ...apiHeaders(opts.headers), ...(opts.headers || {}) } });
 }
 
 let CURRENT_USER = null;
@@ -1364,9 +1366,10 @@ let _pushPending= false;
 let _pulling    = false;
 let _localDirty = false;
 let _saveEpoch  = 0;
+let _serverRevision = 0;
 let _dirtyKeys  = new Set();
 let _deletedKeys= new Set();
-const PULL_INTERVAL_MS = 45000;
+const PULL_INTERVAL_MS = 15000;
 const TODOS_SYNC_KEY = '__todos__';
 const PROJECTS_SYNC_KEY = '__projects__';
 const BACKGROUND_PULL_SKIP = new Set([TODOS_SYNC_KEY, PROJECTS_SYNC_KEY]);
@@ -1486,6 +1489,20 @@ function migrateDashPrefsIntoData() {
   _fpDashPrefsMigrated = true;
 }
 
+function noteServerRevision(res) {
+  const rev = Number(res.headers.get('X-FP-Revision'));
+  if (Number.isFinite(rev) && rev > 0) _serverRevision = rev;
+}
+
+function applyServerData(remote, revision) {
+  DATA = { ...(remote || {}) };
+  if (Number.isFinite(revision) && revision > 0) _serverRevision = revision;
+  _localDirty = false;
+  _dirtyKeys.clear();
+  _deletedKeys.clear();
+  saveLocal(DATA);
+}
+
 async function pushToRemote() {
   if (_pushing) { _pushPending = true; return; }
   clearTimeout(_syncTimer);
@@ -1497,14 +1514,27 @@ async function pushToRemote() {
   setSyncStatus('syncing', '⟳ Saving…');
   try {
     const r = await fetch('/api/data', {
-      method: 'POST', headers: apiHeaders(), body: snapshot, credentials: 'include'
+      method: 'POST',
+      headers: apiHeaders({ 'X-FP-Base-Revision': String(_serverRevision || 0) }),
+      body: snapshot,
+      credentials: 'include',
     });
-    if (!r.ok) {
-      if (r.status === 401) { showLogin('Please sign in again.'); throw new Error(401); }
-      throw new Error(r.status);
+    if (r.status === 401) { showLogin('Please sign in again.'); throw new Error(401); }
+    if (r.status === 409) {
+      // Another device saved first (e.g. Melissa still had the old event). Take server truth.
+      const body = await r.json().catch(() => ({}));
+      applyServerData(body.data || {}, Number(body.revision) || Number(r.headers.get('X-FP-Revision')));
+      migrateDashPrefsIntoData();
+      migrateWeekLocationsToDays();
+      render();
+      setSyncStatus('saved', '✓ Updated');
+      _pushing = false;
+      _pushPending = false;
+      return;
     }
+    if (!r.ok) throw new Error(r.status);
+    noteServerRevision(r);
     // If the user edited/deleted while this request was in flight, keep dirty and push again.
-    // Otherwise an older in-flight save can resurrect deleted items.
     if (epochAtSend === _saveEpoch && JSON.stringify(DATA) === snapshot) {
       _localDirty = false;
       _dirtyKeys.clear();
@@ -1604,11 +1634,10 @@ function flushAllTodoEdits() {
 }
 
 function pushToRemoteKeepalive() {
-  // Same payload as a normal save; used on tab close. Do not clear dirty flags here.
   try {
     fetch('/api/data', {
       method: 'POST',
-      headers: apiHeaders(),
+      headers: apiHeaders({ 'X-FP-Base-Revision': String(_serverRevision || 0) }),
       body: JSON.stringify(DATA),
       credentials: 'include',
       keepalive: true,
@@ -1713,13 +1742,18 @@ async function pullFromRemote(opts = {}) {
       if (r.status === 401) { showLogin('Please sign in again.'); return false; }
       throw new Error(r.status);
     }
+    noteServerRevision(r);
     const remote = await r.json();
-    const changed = mergeRemoteIntoData(remote, { respectDirty: true, background: !!opts.background });
+    // For cross-device sync, replace from server when we have no local edits.
+    const before = JSON.stringify(DATA);
+    applyServerData(remote, _serverRevision);
+    migrateDashPrefsIntoData();
+    migrateWeekLocationsToDays();
+    const changed = before !== JSON.stringify(DATA);
     if (changed) {
-      saveLocal(DATA);
       render();
       if (!opts.quiet) setSyncStatus('saved', '✓ Updated');
-    } else if (!opts.quiet && !_localDirty) {
+    } else if (!opts.quiet) {
       setSyncStatus('saved', '✓ Saved');
     }
     return changed;
@@ -1748,6 +1782,7 @@ async function syncOnLoad() {
       }
       throw new Error(r.status);
     }
+    noteServerRevision(r);
     const remote = await r.json();
     const local = loadLocal();
     const remoteEmpty = Object.keys(remote).length === 0;
@@ -1766,11 +1801,7 @@ async function syncOnLoad() {
       return;
     }
 
-    DATA = { ...remote };
-    _localDirty = false;
-    _dirtyKeys.clear();
-    _deletedKeys.clear();
-    saveLocal(DATA);
+    applyServerData(remote, _serverRevision);
     migrateDashPrefsIntoData();
     migrateWeekLocationsToDays();
     render();
