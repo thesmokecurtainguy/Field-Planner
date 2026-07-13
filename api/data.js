@@ -5,61 +5,6 @@
 const { cors, requireUser } = require('../lib/auth');
 const { getAppData, setAppData } = require('../lib/db');
 
-const TODO_OPT_FIELDS = ['dueBy', 'blockDate', 'blockStart', 'blockEnd', 'importance'];
-
-function todoTs(t) {
-  return (t && (t.updatedAt || t.createdAt)) || 0;
-}
-
-function mergeTodoObjects(prev, incoming) {
-  if (!prev) return { ...incoming };
-  if (!incoming) return { ...prev };
-  if (todoTs(incoming) >= todoTs(prev)) {
-    const out = { ...prev, ...incoming };
-    for (const f of TODO_OPT_FIELDS) {
-      if (f in incoming && incoming[f] == null) delete out[f];
-    }
-    return out;
-  }
-  return { ...prev };
-}
-
-function mergeStoredJsonArrays(baseRaw, overlayRaw, idKey, mergeItem) {
-  let base = [], overlay = [];
-  try { base = JSON.parse(baseRaw || '[]'); } catch (_) {}
-  try { overlay = JSON.parse(overlayRaw || '[]'); } catch (_) {}
-  if (!Array.isArray(base)) base = [];
-  if (!Array.isArray(overlay)) overlay = [];
-
-  const combine = mergeItem || ((a, b) => (a ? { ...a, ...b } : { ...b }));
-
-  const byId = new Map();
-  base.forEach(item => {
-    if (item && item[idKey]) byId.set(item[idKey], { ...item });
-  });
-  overlay.forEach(item => {
-    if (!item || !item[idKey]) return;
-    const prev = byId.get(item[idKey]);
-    byId.set(item[idKey], combine(prev, item));
-  });
-
-  const order = [];
-  const seen = new Set();
-  overlay.forEach(item => {
-    if (item && item[idKey] && byId.has(item[idKey])) {
-      order.push(byId.get(item[idKey]));
-      seen.add(item[idKey]);
-    }
-  });
-  base.forEach(item => {
-    if (item && item[idKey] && !seen.has(item[idKey])) {
-      order.push(byId.get(item[idKey]));
-      seen.add(item[idKey]);
-    }
-  });
-  return JSON.stringify(order);
-}
-
 module.exports = async function handler(req, res) {
   cors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -82,24 +27,10 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'Invalid JSON body' });
       }
 
-      const current = await getAppData();
-
-      for (const [k, v] of Object.entries(body)) {
-        if (v === null || v === '') {
-          delete current[k];
-        } else if (k === '__todos__' || k === '__projects__') {
-          const itemMerge = k === '__todos__' ? mergeTodoObjects : null;
-          current[k] = mergeStoredJsonArrays(current[k], v, 'id', itemMerge);
-        } else if (k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__') {
-          if (v === '[]' && current[k] && current[k] !== '[]') continue;
-          current[k] = mergeStoredJsonArrays(current[k], v, 'id');
-        } else {
-          current[k] = v;
-        }
-      }
-
-      await setAppData(current);
-      return res.status(200).json({ ok: true });
+      // Last-write-wins: client sends the full household blob.
+      // Avoid merge/empty-string deletion bugs that were wiping locations and edits.
+      const saved = await setAppData(body);
+      return res.status(200).json({ ok: true, keys: Object.keys(saved).length });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
