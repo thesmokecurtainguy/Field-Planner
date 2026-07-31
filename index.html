@@ -1540,8 +1540,9 @@ async function pushToRemote() {
       _dirtyKeys.clear();
       _deletedKeys.clear();
       setSyncStatus('saved', '✓ Saved');
-      // Fire-and-forget Google Calendar push (Phase 1: non-recurring day events).
-      syncGoogleCalendar();
+      // Await Google sync before any pending re-push so googleEventId is merged
+      // into local DATA first (prevents duplicate Google creates).
+      await syncGoogleCalendar();
     } else {
       _localDirty = true;
       _pushPending = true;
@@ -1606,23 +1607,30 @@ function mergeGoogleSyncIntoLocal(remote, revision) {
 }
 
 let _googleSyncing = false;
+let _googleSyncPending = false;
 async function syncGoogleCalendar() {
-  if (_googleSyncing) return;
+  if (_googleSyncing) {
+    _googleSyncPending = true;
+    return;
+  }
   _googleSyncing = true;
   try {
-    const r = await apiFetch('/api/google-calendar/sync', { method: 'POST' });
-    if (r.status === 503) return; // not configured
-    if (r.status === 401) return;
-    if (!r.ok) {
-      const body = await r.json().catch(() => ({}));
-      console.warn('[FP] Google Calendar sync failed:', r.status, body.error || '');
-      return;
-    }
-    const body = await r.json();
-    mergeGoogleSyncIntoLocal(body.data || {}, Number(body.revision));
-    if (body.errors && body.errors.length) {
-      console.warn('[FP] Google Calendar sync partial errors:', body.errors);
-    }
+    do {
+      _googleSyncPending = false;
+      const r = await apiFetch('/api/google-calendar/sync', { method: 'POST' });
+      if (r.status === 503) return; // not configured
+      if (r.status === 401) return;
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        console.warn('[FP] Google Calendar sync failed:', r.status, body.error || '');
+        return;
+      }
+      const body = await r.json();
+      mergeGoogleSyncIntoLocal(body.data || {}, Number(body.revision));
+      if (body.errors && body.errors.length) {
+        console.warn('[FP] Google Calendar sync partial errors:', body.errors);
+      }
+    } while (_googleSyncPending);
   } catch (e) {
     console.warn('[FP] Google Calendar sync error:', e);
   } finally {
