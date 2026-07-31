@@ -1536,13 +1536,14 @@ async function pushToRemote() {
     noteServerRevision(r);
     // If the user edited/deleted while this request was in flight, keep dirty and push again.
     if (epochAtSend === _saveEpoch && JSON.stringify(DATA) === snapshot) {
+      // Capture touched event days before clearing dirty state (Google sync is scoped to these).
+      const googleKeys = [..._dirtyKeys].filter(k => k.endsWith('-events'));
       _localDirty = false;
       _dirtyKeys.clear();
       _deletedKeys.clear();
       setSyncStatus('saved', '✓ Saved');
-      // Await Google sync before any pending re-push so googleEventId is merged
-      // into local DATA first (prevents duplicate Google creates).
-      await syncGoogleCalendar();
+      // Never block Railway saves on Google — sync in background for touched days only.
+      if (googleKeys.length) syncGoogleCalendar(googleKeys);
     } else {
       _localDirty = true;
       _pushPending = true;
@@ -1607,19 +1608,25 @@ function mergeGoogleSyncIntoLocal(remote, revision) {
 }
 
 let _googleSyncing = false;
-let _googleSyncPending = false;
-async function syncGoogleCalendar() {
+let _googleSyncQueuedKeys = null; // Set of event keys to sync after the in-flight call
+async function syncGoogleCalendar(keys) {
+  const keyList = Array.isArray(keys) ? keys.filter(k => typeof k === 'string' && k.endsWith('-events')) : [];
   if (_googleSyncing) {
-    _googleSyncPending = true;
+    if (!_googleSyncQueuedKeys) _googleSyncQueuedKeys = new Set();
+    keyList.forEach(k => _googleSyncQueuedKeys.add(k));
     return;
   }
   _googleSyncing = true;
+  let pending = new Set(keyList);
   try {
-    do {
-      _googleSyncPending = false;
-      const r = await apiFetch('/api/google-calendar/sync', { method: 'POST' });
-      if (r.status === 503) return; // not configured
-      if (r.status === 401) return;
+    while (pending.size) {
+      const batch = [...pending];
+      pending = new Set();
+      const r = await apiFetch('/api/google-calendar/sync', {
+        method: 'POST',
+        body: JSON.stringify({ keys: batch }),
+      });
+      if (r.status === 503 || r.status === 401) return;
       if (!r.ok) {
         const body = await r.json().catch(() => ({}));
         console.warn('[FP] Google Calendar sync failed:', r.status, body.error || '');
@@ -1627,10 +1634,17 @@ async function syncGoogleCalendar() {
       }
       const body = await r.json();
       mergeGoogleSyncIntoLocal(body.data || {}, Number(body.revision));
+      if (body.rateLimited) {
+        console.warn('[FP] Google Calendar rate limited — will retry on next event save');
+      }
       if (body.errors && body.errors.length) {
         console.warn('[FP] Google Calendar sync partial errors:', body.errors);
       }
-    } while (_googleSyncPending);
+      if (_googleSyncQueuedKeys && _googleSyncQueuedKeys.size) {
+        _googleSyncQueuedKeys.forEach(k => pending.add(k));
+        _googleSyncQueuedKeys = null;
+      }
+    }
   } catch (e) {
     console.warn('[FP] Google Calendar sync error:', e);
   } finally {

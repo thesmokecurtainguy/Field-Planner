@@ -1,14 +1,15 @@
 // Push non-recurring Field Planner day events to the dedicated Google Calendar.
 // Env: GOOGLE_SERVICE_ACCOUNT_JSON, GOOGLE_CALENDAR_ID
 // Client should call POST after a successful /api/data save.
+// Body (optional): { keys: ["2026-06-31-events", ...] } — only those days are upserted.
 const { cors, requireUser } = require('../../lib/auth');
 const { getAppDataWithMeta, setAppData } = require('../../lib/db');
 const { isGoogleConfigured, syncPayloadToGoogle } = require('../../lib/google-calendar');
 
-async function runSyncOnce() {
+async function runSyncOnce(keys) {
   const { payload, revision } = await getAppDataWithMeta();
   const next = { ...payload };
-  const stats = await syncPayloadToGoogle(next);
+  const stats = await syncPayloadToGoogle(next, { keys });
   const saved = await setAppData(next, revision);
   return { stats, saved };
 }
@@ -31,11 +32,18 @@ module.exports = async function handler(req, res) {
     });
   }
 
+  let body = req.body;
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch (_) { body = {}; }
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
+  const keys = Array.isArray(body.keys) ? body.keys : undefined;
+
   try {
     let lastErr;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const { stats, saved } = await runSyncOnce();
+        const { stats, saved } = await runSyncOnce(keys);
         res.setHeader('X-FP-Revision', String(saved.revision));
         return res.status(200).json({
           ok: true,
@@ -44,6 +52,7 @@ module.exports = async function handler(req, res) {
           updated: stats.updated,
           deleted: stats.deleted,
           recreated: stats.recreated,
+          rateLimited: !!stats.rateLimited,
           errors: stats.errors,
           data: saved.payload,
         });
