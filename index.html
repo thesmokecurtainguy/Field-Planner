@@ -126,7 +126,12 @@
     color: var(--text); cursor: pointer; transition: background 0.1s; width: fit-content;
   }
   .event-chip.is-recurring { border-style: dashed; }
+  .event-chip.is-multiday {
+    background: #e8f0ef; border-color: #8aa9a6;
+    border-left: 3px solid #3d6b66;
+  }
   .event-chip:hover { background: #E8E4DC; }
+  .event-chip.is-multiday:hover { background: #dce8e6; }
   .event-chip .chip-title { font-weight: 500; }
   .event-chip .chip-time  { color: var(--text-muted); font-size: 10px; }
   .chip-recur { font-size: 10px; color: var(--text-faint); }
@@ -204,7 +209,40 @@
     white-space: nowrap; max-width: 100%;
   }
   .cell-event-chip.is-recurring { background: none; border: 1px dashed rgba(0,0,0,0.15); }
+  .cell-event-chip.is-multiday {
+    background: #e8f0ef; border: 1px solid #8aa9a6;
+    border-left: 3px solid #3d6b66;
+  }
   .cell-event-chip .chip-time { color: var(--text-muted); margin-left: 3px; }
+  .grid-cell.has-multiday {
+    box-shadow: inset 3px 0 0 #3d6b66;
+    background-image: linear-gradient(180deg, rgba(61, 107, 102, 0.07), transparent 42%);
+  }
+  .dv-allday-section { margin: 12px 0 4px; }
+  .dv-allday-title {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-faint); margin-bottom: 8px;
+  }
+  .dv-allday-list { display: flex; flex-direction: column; gap: 6px; }
+  .dv-allday-chip {
+    background: #e8f0ef; border: 1px solid #8aa9a6; border-left: 3px solid #3d6b66;
+    border-radius: 6px; padding: 8px 12px; cursor: pointer; font-size: 13px;
+  }
+  .dv-allday-chip .chip-time { color: var(--text-muted); font-size: 11px; margin-left: 6px; }
+  .modal-event-card.is-multiday { border-color: #8aa9a6; border-left: 3px solid #3d6b66; }
+  .week-allday-row {
+    display: grid; gap: 4px; margin-bottom: 8px;
+    grid-template-columns: 52px repeat(7, 1fr);
+  }
+  .week-allday-gutter {
+    font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase;
+    letter-spacing: 0.04em; padding-top: 6px;
+  }
+  .week-allday-cell {
+    min-height: 28px; background: rgba(61, 107, 102, 0.04);
+    border-radius: 4px; padding: 3px; display: flex; flex-direction: column; gap: 2px;
+  }
+  .week-allday-cell.has-multiday { box-shadow: inset 2px 0 0 #3d6b66; }
 
   .cell-tag {
     font-size: 9px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
@@ -1212,7 +1250,10 @@
 
     <div class="modal-section-label">Events</div>
     <div class="modal-events-list" id="modal-events-list"></div>
-    <button class="add-event-btn" onclick="addModalEvent()">+ Add Event</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="add-event-btn" onclick="addModalEvent()">+ Add Event</button>
+      <button class="add-event-btn" onclick="addModalMultidayEvent()">+ Multi-day</button>
+    </div>
 
     <div class="modal-section-label" style="margin-top:16px">Flights</div>
     <div class="modal-flights-list" id="modal-flights-list"></div>
@@ -1256,6 +1297,8 @@ let modalDate    = null;
 let modalEvents  = [];
 let modalFlights = [];
 let modalRecurringOriginalIds = [];
+let modalMultidayOriginalIds = [];
+const MULTIDAY_SYNC_KEY = '__multiday__';
 
 function getWeekStart(date) {
   const d = new Date(date); d.setHours(0,0,0,0);
@@ -1390,7 +1433,7 @@ function shouldBackgroundPullKey(k) {
 }
 
 function isStoredArrayKey(k) {
-  return k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__';
+  return k.endsWith('-events') || k.endsWith('-flights') || k === '__recurring__' || k === MULTIDAY_SYNC_KEY;
 }
 
 function markDirty(...keys) {
@@ -1537,12 +1580,12 @@ async function pushToRemote() {
     // If the user edited/deleted while this request was in flight, keep dirty and push again.
     if (epochAtSend === _saveEpoch && JSON.stringify(DATA) === snapshot) {
       // Capture touched event days before clearing dirty state (Google sync is scoped to these).
-      const googleKeys = [..._dirtyKeys].filter(k => k.endsWith('-events'));
+      const googleKeys = [..._dirtyKeys].filter(k => k.endsWith('-events') || k === MULTIDAY_SYNC_KEY);
       _localDirty = false;
       _dirtyKeys.clear();
       _deletedKeys.clear();
       setSyncStatus('saved', '✓ Saved');
-      // Never block Railway saves on Google — sync in background for touched days only.
+      // Never block Railway saves on Google — sync in background for touched days / multiday only.
       if (googleKeys.length) syncGoogleCalendar(googleKeys);
     } else {
       _localDirty = true;
@@ -1564,6 +1607,37 @@ async function pushToRemote() {
  * Merge googleEventId / googleSyncedAt from a Google sync response into local DATA
  * without clobbering in-flight local edits on other fields.
  */
+function mergeGoogleIdsIntoArrayKey(remote, key) {
+  let remoteEvents;
+  try { remoteEvents = JSON.parse(remote[key] || '[]'); } catch (_) { return; }
+  if (!Array.isArray(remoteEvents)) return;
+
+  let localEvents;
+  try { localEvents = JSON.parse(DATA[key] || '[]'); } catch (_) { localEvents = []; }
+  if (!Array.isArray(localEvents)) localEvents = [];
+
+  const byId = new Map(remoteEvents.filter(e => e && e.id).map(e => [String(e.id), e]));
+  let changed = false;
+  localEvents.forEach(ev => {
+    if (!ev || !ev.id) return;
+    const r = byId.get(String(ev.id));
+    if (!r) return;
+    if (r.googleEventId && ev.googleEventId !== r.googleEventId) {
+      ev.googleEventId = r.googleEventId;
+      changed = true;
+    }
+    if (r.googleSyncedAt && ev.googleSyncedAt !== r.googleSyncedAt) {
+      ev.googleSyncedAt = r.googleSyncedAt;
+      changed = true;
+    }
+  });
+  if (!DATA[key] && remote[key]) {
+    DATA[key] = remote[key];
+  } else if (changed) {
+    DATA[key] = JSON.stringify(localEvents);
+  }
+}
+
 function mergeGoogleSyncIntoLocal(remote, revision) {
   if (!remote || typeof remote !== 'object') return;
   Object.keys(remote).forEach(k => {
@@ -1571,36 +1645,8 @@ function mergeGoogleSyncIntoLocal(remote, revision) {
       DATA[k] = remote[k];
       return;
     }
-    if (!k.endsWith('-events')) return;
-    let remoteEvents;
-    try { remoteEvents = JSON.parse(remote[k] || '[]'); } catch (_) { return; }
-    if (!Array.isArray(remoteEvents)) return;
-
-    let localEvents;
-    try { localEvents = JSON.parse(DATA[k] || '[]'); } catch (_) { localEvents = []; }
-    if (!Array.isArray(localEvents)) localEvents = [];
-
-    const byId = new Map(remoteEvents.filter(e => e && e.id).map(e => [String(e.id), e]));
-    let changed = false;
-    localEvents.forEach(ev => {
-      if (!ev || !ev.id) return;
-      const r = byId.get(String(ev.id));
-      if (!r) return;
-      if (r.googleEventId && ev.googleEventId !== r.googleEventId) {
-        ev.googleEventId = r.googleEventId;
-        changed = true;
-      }
-      if (r.googleSyncedAt && ev.googleSyncedAt !== r.googleSyncedAt) {
-        ev.googleSyncedAt = r.googleSyncedAt;
-        changed = true;
-      }
-    });
-    // If local is missing this key entirely, take server events (includes google ids).
-    if (!DATA[k] && remote[k]) {
-      DATA[k] = remote[k];
-      changed = true;
-    } else if (changed) {
-      DATA[k] = JSON.stringify(localEvents);
+    if (k === MULTIDAY_SYNC_KEY || k.endsWith('-events')) {
+      mergeGoogleIdsIntoArrayKey(remote, k);
     }
   });
   if (Number.isFinite(revision) && revision > 0) _serverRevision = revision;
@@ -1610,7 +1656,9 @@ function mergeGoogleSyncIntoLocal(remote, revision) {
 let _googleSyncing = false;
 let _googleSyncQueuedKeys = null; // Set of event keys to sync after the in-flight call
 async function syncGoogleCalendar(keys) {
-  const keyList = Array.isArray(keys) ? keys.filter(k => typeof k === 'string' && k.endsWith('-events')) : [];
+  const keyList = Array.isArray(keys)
+    ? keys.filter(k => typeof k === 'string' && (k.endsWith('-events') || k === MULTIDAY_SYNC_KEY))
+    : [];
   if (_googleSyncing) {
     if (!_googleSyncQueuedKeys) _googleSyncQueuedKeys = new Set();
     keyList.forEach(k => _googleSyncQueuedKeys.add(k));
@@ -2384,6 +2432,54 @@ function saveRecurring(arr) {
   saveData(DATA);
 }
 
+function getMultiday() {
+  try { return JSON.parse(DATA[MULTIDAY_SYNC_KEY] || '[]'); } catch (e) { return []; }
+}
+function saveMultiday(arr) {
+  DATA[MULTIDAY_SYNC_KEY] = JSON.stringify(arr);
+  markDirty(MULTIDAY_SYNC_KEY);
+  saveData(DATA);
+}
+
+/** Inclusive day-key range covers this calendar date. */
+function multidayApplies(ev, date) {
+  if (!ev || !ev.startDayKey || !ev.endDayKey) return false;
+  const k = dkFromDate(date);
+  return compareDayKeys(ev.startDayKey, k) <= 0 && compareDayKeys(k, ev.endDayKey) <= 0;
+}
+
+function dayKeyToLocalDate(dkKey) {
+  const p = String(dkKey || '').split('-').map(Number);
+  if (p.length !== 3 || p.some(n => !Number.isFinite(n))) return null;
+  return new Date(p[0], p[1], p[2]);
+}
+
+function formatMultidayRangeLabel(ev) {
+  if (!ev || !ev.startDayKey || !ev.endDayKey) return '';
+  const s = dayKeyToLocalDate(ev.startDayKey);
+  const e = dayKeyToLocalDate(ev.endDayKey);
+  if (!s || !e) return '';
+  if (ev.startDayKey === ev.endDayKey) {
+    return s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  if (s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear()) {
+    return `${s.toLocaleDateString('en-US', { month: 'short' })} ${s.getDate()}–${e.getDate()}`;
+  }
+  return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+}
+
+function normalizeMultidayRange(ev) {
+  if (!ev.startDayKey) ev.startDayKey = modalDk || '';
+  if (!ev.endDayKey) ev.endDayKey = ev.startDayKey;
+  if (ev.startDayKey && ev.endDayKey && compareDayKeys(ev.startDayKey, ev.endDayKey) > 0) {
+    const tmp = ev.startDayKey;
+    ev.startDayKey = ev.endDayKey;
+    ev.endDayKey = tmp;
+  }
+  ev.startTime = '';
+  ev.endTime = '';
+}
+
 function getFlights(key) { try { return JSON.parse(DATA[key+'-flights'] || '[]'); } catch(e) { return []; } }
 function saveFlights(key, arr) {
   const dk = key + '-flights';
@@ -2424,10 +2520,12 @@ function recurringApplies(ev, date) {
 
 function getEventsForDay(date) {
   const key = dkFromDate(date);
-  const regular   = getEvents(key).map(ev => ({...ev, _recurring: false}));
+  const regular   = getEvents(key).map(ev => ({...ev, _recurring: false, _multiday: false}));
   const recurring = getRecurring().filter(ev => recurringApplies(ev, date))
-                                  .map(ev => ({...ev, _recurring: true, _recurringId: ev.id}));
-  return [...regular, ...recurring];
+                                  .map(ev => ({...ev, _recurring: true, _recurringId: ev.id, _multiday: false}));
+  const multiday  = getMultiday().filter(ev => multidayApplies(ev, date))
+                                  .map(ev => ({...ev, _multiday: true, _recurring: false, startTime: '', endTime: ''}));
+  return [...multiday, ...regular, ...recurring];
 }
 
 function recurDescription(ev) {
@@ -2492,18 +2590,21 @@ function escHtml(s) {
 }
 
 function chipHTML(ev, key) {
-  const t = formatTimeRange(ev.startTime, ev.endTime);
-  const recurCls = ev._recurring ? ' is-recurring' : '';
-  const recurIcon = ev._recurring ? '<span class="chip-recur">↻</span>' : '';
-  return `<div class="event-chip${recurCls}" data-key="${key}">
-    ${recurIcon}<span class="chip-title">${ev.title||'Untitled'}</span>
-    ${t ? `<span class="chip-time">${t}</span>` : ''}
+  const range = ev._multiday ? formatMultidayRangeLabel(ev) : '';
+  const t = ev._multiday ? range : formatTimeRange(ev.startTime, ev.endTime);
+  const cls = ev._multiday ? ' is-multiday' : (ev._recurring ? ' is-recurring' : '');
+  const icon = ev._multiday ? '<span class="chip-recur">▬</span>' : (ev._recurring ? '<span class="chip-recur">↻</span>' : '');
+  return `<div class="event-chip${cls}" data-key="${key}">
+    ${icon}<span class="chip-title">${escHtml(ev.title||'Untitled')}</span>
+    ${t ? `<span class="chip-time">${escHtml(t)}</span>` : ''}
   </div>`;
 }
 function cellChipHTML(ev) {
-  const t = formatTimeRange(ev.startTime, ev.endTime);
-  const recurCls = ev._recurring ? ' is-recurring' : '';
-  return `<div class="cell-event-chip${recurCls}">${ev._recurring?'↻ ':''}${ev.title||'Untitled'}${t?`<span class="chip-time">${t}</span>`:''}</div>`;
+  const range = ev._multiday ? formatMultidayRangeLabel(ev) : '';
+  const t = ev._multiday ? range : formatTimeRange(ev.startTime, ev.endTime);
+  const cls = ev._multiday ? ' is-multiday' : (ev._recurring ? ' is-recurring' : '');
+  const prefix = ev._multiday ? '▬ ' : (ev._recurring ? '↻ ' : '');
+  return `<div class="cell-event-chip${cls}">${prefix}${escHtml(ev.title||'Untitled')}${t?`<span class="chip-time">${escHtml(t)}</span>`:''}</div>`;
 }
 function flightChipHTML(fl, key) {
   const route = fl.originCode && fl.destCode ? ` ${fl.originCode}→${fl.destCode}` : '';
@@ -2660,6 +2761,7 @@ function renderGrid() {
       if (isToday(date))    cls += ' is-today';
       if (isPast(date))     cls += ' past';
       if (status)           cls += ' status-'+status;
+      if (events.some(ev => ev._multiday)) cls += ' has-multiday';
       cell.className = cls;
       cell.innerHTML = `
         <div class="cell-num">${date.getDate()}</div>
@@ -2743,6 +2845,25 @@ function renderWeekGrid() {
   wrap.className = 'sched-wrap';
   wrap.innerHTML = '<div class="sched-title">Week schedule · 4am–6pm · click a slot to block task time</div>';
 
+  const allday = document.createElement('div');
+  allday.className = 'week-allday-row';
+  allday.innerHTML = `<div class="week-allday-gutter">All day</div>` + dates.map(date => {
+    const key = dkFromDate(date);
+    const md = getEventsForDay(date).filter(ev => ev._multiday || (!ev.startTime && !ev.endTime && !ev._recurring));
+    const hasMd = md.some(ev => ev._multiday);
+    return `<div class="week-allday-cell${hasMd ? ' has-multiday' : ''}" data-key="${key}">${
+      md.map(ev => cellChipHTML(ev)).join('')
+    }</div>`;
+  }).join('');
+  wrap.appendChild(allday);
+  allday.querySelectorAll('.week-allday-cell').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const key = cell.dataset.key;
+      const date = dates.find(d => dkFromDate(d) === key);
+      if (date) openModal(key, date);
+    });
+  });
+
   const grid = document.createElement('div');
   grid.className = 'sched-grid week-mode';
 
@@ -2809,6 +2930,27 @@ function renderDay() {
 
   el.appendChild(hero);
 
+  const dayEvents = getEventsForDay(date);
+  const alldayEvents = dayEvents.filter(ev => ev._multiday || (!ev.startTime && !ev.endTime));
+  if (alldayEvents.length) {
+    const alldaySec = document.createElement('div');
+    alldaySec.className = 'dv-allday-section';
+    alldaySec.innerHTML = `<div class="dv-allday-title">All day</div><div class="dv-allday-list">${
+      alldayEvents.map(ev => {
+        const range = ev._multiday ? formatMultidayRangeLabel(ev) : '';
+        return `<div class="dv-allday-chip${ev._multiday ? ' is-multiday' : ''}" data-open="1">
+          <strong>${escHtml(ev.title || 'Untitled')}</strong>
+          ${range ? `<span class="chip-time">${escHtml(range)}</span>` : ''}
+          ${ev.location ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${escHtml(ev.location)}</div>` : ''}
+        </div>`;
+      }).join('')
+    }</div>`;
+    alldaySec.querySelectorAll('[data-open]').forEach(chip => {
+      chip.addEventListener('click', () => openModal(key, date));
+    });
+    el.appendChild(alldaySec);
+  }
+
   const schedWrap = document.createElement('div');
   schedWrap.className = 'sched-wrap';
   schedWrap.innerHTML = '<div class="sched-title">Schedule · 4am–6pm · click a slot to block task time</div>';
@@ -2850,11 +2992,14 @@ function openModal(key, date, addEventImmediate = false) {
   modalDk   = key;
   modalDate = date;
 
-  const regular   = getEvents(key).map(ev => ({...ev, _recurring:false, _recurringId:null}));
+  const regular   = getEvents(key).map(ev => ({...ev, _recurring:false, _recurringId:null, _multiday:false}));
   const recForDay = getRecurring().filter(ev => recurringApplies(ev, date))
-                                  .map(ev => ({...ev, _recurring:true, _recurringId:ev.id}));
+                                  .map(ev => ({...ev, _recurring:true, _recurringId:ev.id, _multiday:false}));
+  const multiForDay = getMultiday().filter(ev => multidayApplies(ev, date))
+                                  .map(ev => ({...ev, _multiday:true, _recurring:false, _recurringId:null, startTime:'', endTime:''}));
   modalRecurringOriginalIds = recForDay.map(ev => ev.id);
-  modalEvents = [...regular, ...recForDay];
+  modalMultidayOriginalIds = multiForDay.map(ev => ev.id);
+  modalEvents = [...multiForDay, ...regular, ...recForDay];
 
   document.getElementById('modal-title').textContent =
     date.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
@@ -2884,7 +3029,9 @@ function renderModalEvents() {
 
   modalEvents.forEach((ev, idx) => {
     const card = document.createElement('div');
-    card.className = 'modal-event-card' + (ev._recurring ? ' is-recurring' : '');
+    card.className = 'modal-event-card'
+      + (ev._multiday ? ' is-multiday' : '')
+      + (ev._recurring ? ' is-recurring' : '');
 
     const pat = ev.pattern || 'weekly';
     const showDayPicker   = ['weekly','biweekly'].includes(pat);
@@ -2899,9 +3046,15 @@ function renderModalEvents() {
       ).join('') +
       `<button class="month-day-btn last-day${activeMDays.includes(-1)?' active':''}" data-idx="${idx}" data-md="-1">Last</button>`;
 
+    const mdStartIso = dkToDateInput(ev.startDayKey || modalDk || '');
+    const mdEndIso = dkToDateInput(ev.endDayKey || ev.startDayKey || modalDk || '');
+    const headerLabel = ev._multiday
+      ? '▬ Multi-day Event'
+      : (ev._recurring ? '↻ Recurring Event' : `Event ${idx + 1}`);
+
     card.innerHTML = `
       <div class="event-card-header">
-        <div class="event-card-num">${ev._recurring ? '↻ Recurring Event' : `Event ${idx+1}`}</div>
+        <div class="event-card-num">${headerLabel}</div>
         <button class="event-delete-btn" data-idx="${idx}" title="Remove">×</button>
       </div>
       <div class="event-fields">
@@ -2917,13 +3070,13 @@ function renderModalEvents() {
           <label>Location</label>
           <input type="text"  data-idx="${idx}" data-field="location"  value="${esc(ev.location)}" placeholder="Address / city" />
         </div>
-        <div class="event-field">
+        <div class="event-field" style="${ev._multiday ? 'display:none' : ''}">
           <label>Start Time</label>
-          <input type="time"  data-idx="${idx}" data-field="startTime" value="${ev.startTime||''}" />
+          <input type="time"  data-idx="${idx}" data-field="startTime" value="${ev.startTime||''}" ${ev._multiday ? 'disabled' : ''} />
         </div>
-        <div class="event-field">
+        <div class="event-field" style="${ev._multiday ? 'display:none' : ''}">
           <label>End Time</label>
-          <input type="time"  data-idx="${idx}" data-field="endTime"   value="${ev.endTime||''}" />
+          <input type="time"  data-idx="${idx}" data-field="endTime"   value="${ev.endTime||''}" ${ev._multiday ? 'disabled' : ''} />
         </div>
         <div class="event-field">
           <label>Contact Name</label>
@@ -2936,12 +3089,29 @@ function renderModalEvents() {
 
         <div class="recur-toggle-row event-field full">
           <label class="recur-toggle-label">
-            <input type="checkbox" class="recur-checkbox" data-idx="${idx}" ${ev._recurring?'checked':''} />
+            <input type="checkbox" class="multiday-checkbox" data-idx="${idx}" ${ev._multiday?'checked':''} />
+            Multi-day (all day)
+          </label>
+        </div>
+        <div class="recur-options${ev._multiday?' visible':''}" id="multiday-opts-${idx}">
+          <div class="event-field">
+            <label>Start Day</label>
+            <input type="date" class="multiday-start" data-idx="${idx}" value="${mdStartIso}" />
+          </div>
+          <div class="event-field">
+            <label>End Day</label>
+            <input type="date" class="multiday-end" data-idx="${idx}" value="${mdEndIso}" />
+          </div>
+        </div>
+
+        <div class="recur-toggle-row event-field full" style="${ev._multiday ? 'display:none' : ''}">
+          <label class="recur-toggle-label">
+            <input type="checkbox" class="recur-checkbox" data-idx="${idx}" ${ev._recurring?'checked':''} ${ev._multiday?'disabled':''} />
             Repeats
           </label>
         </div>
 
-        <div class="recur-options${ev._recurring?' visible':''}" id="recur-opts-${idx}">
+        <div class="recur-options${ev._recurring && !ev._multiday?' visible':''}" id="recur-opts-${idx}">
           <div class="event-field full">
             <label>Pattern</label>
             <select data-idx="${idx}" data-field="pattern" class="recur-pattern-select">
@@ -2983,7 +3153,7 @@ function renderModalEvents() {
       pushToRemote();
     });
 
-    // Regular field inputs
+    // Regular field inputs (skip multiday date inputs — handled separately as day keys)
     card.querySelectorAll('input[data-field], select[data-field]').forEach(input => {
       input.addEventListener('input', e => {
         const i = parseInt(e.target.dataset.idx);
@@ -2991,18 +3161,56 @@ function renderModalEvents() {
       });
     });
 
-    // Recurring toggle
-    card.querySelector('.recur-checkbox').addEventListener('change', e => {
+    // Multi-day toggle (mutually exclusive with repeats)
+    card.querySelector('.multiday-checkbox').addEventListener('change', e => {
       const i = parseInt(e.target.dataset.idx);
-      modalEvents[i]._recurring = e.target.checked;
+      modalEvents[i]._multiday = e.target.checked;
       if (e.target.checked) {
-        if (!modalEvents[i].pattern)   modalEvents[i].pattern   = 'weekly';
-        if (!modalEvents[i].days)      modalEvents[i].days      = [modalDate.getDay()];
-        if (!modalEvents[i].startDate) modalEvents[i].startDate = dateStr(modalDate);
-        if (!modalEvents[i].id)        modalEvents[i].id        = Date.now().toString();
+        modalEvents[i]._recurring = false;
+        if (!modalEvents[i].startDayKey) modalEvents[i].startDayKey = modalDk;
+        if (!modalEvents[i].endDayKey) modalEvents[i].endDayKey = modalDk;
+        normalizeMultidayRange(modalEvents[i]);
+        if (!modalEvents[i].id) modalEvents[i].id = Date.now().toString();
+      } else {
+        delete modalEvents[i].startDayKey;
+        delete modalEvents[i].endDayKey;
       }
       renderModalEvents();
     });
+
+    card.querySelectorAll('.multiday-start, .multiday-end').forEach(input => {
+      input.addEventListener('change', e => {
+        const i = parseInt(e.target.dataset.idx);
+        const dkVal = dateInputToDk(e.target.value);
+        if (e.target.classList.contains('multiday-start')) modalEvents[i].startDayKey = dkVal;
+        else modalEvents[i].endDayKey = dkVal;
+        normalizeMultidayRange(modalEvents[i]);
+        // Refresh displayed values if swapped
+        const startEl = card.querySelector('.multiday-start');
+        const endEl = card.querySelector('.multiday-end');
+        if (startEl) startEl.value = dkToDateInput(modalEvents[i].startDayKey);
+        if (endEl) endEl.value = dkToDateInput(modalEvents[i].endDayKey);
+      });
+    });
+
+    // Recurring toggle
+    const recurCb = card.querySelector('.recur-checkbox');
+    if (recurCb) {
+      recurCb.addEventListener('change', e => {
+        const i = parseInt(e.target.dataset.idx);
+        modalEvents[i]._recurring = e.target.checked;
+        if (e.target.checked) {
+          modalEvents[i]._multiday = false;
+          delete modalEvents[i].startDayKey;
+          delete modalEvents[i].endDayKey;
+          if (!modalEvents[i].pattern)   modalEvents[i].pattern   = 'weekly';
+          if (!modalEvents[i].days)      modalEvents[i].days      = [modalDate.getDay()];
+          if (!modalEvents[i].startDate) modalEvents[i].startDate = dateStr(modalDate);
+          if (!modalEvents[i].id)        modalEvents[i].id        = Date.now().toString();
+        }
+        renderModalEvents();
+      });
+    }
 
     // Pattern select
     const patSelect = card.querySelector('.recur-pattern-select');
@@ -3014,7 +3222,6 @@ function renderModalEvents() {
         const monthDayPicker = document.getElementById(`recur-month-days-${i}`);
         if (dayPicker)      dayPicker.style.display      = ['weekly','biweekly'].includes(e.target.value) ? 'flex' : 'none';
         if (monthDayPicker) monthDayPicker.style.display = e.target.value === 'monthly' ? 'flex' : 'none';
-        // Initialize monthDays when switching to monthly for the first time
         if (e.target.value === 'monthly' && (!modalEvents[i].monthDays || !modalEvents[i].monthDays.length)) {
           modalEvents[i].monthDays = [modalDate ? modalDate.getDate() : 1];
           if (monthDayPicker) {
@@ -3060,7 +3267,7 @@ function addModalEvent() {
   modalEvents.push({
     id: Date.now().toString(), title:'', business:'', location:'',
     startTime:'', endTime:'', contact:'', email:'',
-    _recurring: false, _recurringId: null,
+    _recurring: false, _recurringId: null, _multiday: false,
     pattern:'weekly', days:[modalDate ? modalDate.getDay() : 1],
     startDate: modalDate ? dateStr(modalDate) : '', endDate:''
   });
@@ -3070,6 +3277,24 @@ function addModalEvent() {
     if (!cards.length) return;
     const last = cards[cards.length-1];
     last.scrollIntoView({behavior:'smooth', block:'nearest'});
+    const ti = last.querySelector('input[data-field="title"]');
+    if (ti) ti.focus();
+  }, 50);
+}
+
+function addModalMultidayEvent() {
+  modalEvents.push({
+    id: Date.now().toString(), title:'', business:'', location:'',
+    startTime:'', endTime:'', contact:'', email:'',
+    _recurring: false, _recurringId: null, _multiday: true,
+    startDayKey: modalDk || '', endDayKey: modalDk || '',
+  });
+  renderModalEvents();
+  setTimeout(() => {
+    const cards = document.querySelectorAll('.modal-event-card');
+    if (!cards.length) return;
+    const last = cards[cards.length - 1];
+    last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     const ti = last.querySelector('input[data-field="title"]');
     if (ti) ti.focus();
   }, 50);
@@ -3235,11 +3460,13 @@ function toggleModalTag(status) {
 
 function persistModalSchedule() {
   if (!modalDk) return;
-  const regularToSave   = modalEvents.filter(ev => !ev._recurring && (ev.title||ev.business||ev.startTime||ev.endTime));
-  const recurringToSave = modalEvents.filter(ev =>  ev._recurring && (ev.title||ev.business||ev.startTime||ev.endTime));
+  const regularToSave   = modalEvents.filter(ev => !ev._recurring && !ev._multiday && (ev.title||ev.business||ev.startTime||ev.endTime));
+  const recurringToSave = modalEvents.filter(ev =>  ev._recurring && !ev._multiday && (ev.title||ev.business||ev.startTime||ev.endTime));
+  const multidayToSave  = modalEvents.filter(ev =>  ev._multiday && (ev.title||ev.business) && ev.startDayKey && ev.endDayKey);
 
   DATA[modalDk + '-events'] = JSON.stringify(regularToSave.map(ev => {
-    const {_recurring, _recurringId, ...rest} = ev; return rest;
+    const {_recurring, _recurringId, _multiday, startDayKey, endDayKey, ...rest} = ev;
+    return rest;
   }));
   markDirty(modalDk + '-events');
 
@@ -3248,15 +3475,40 @@ function persistModalSchedule() {
     .filter(r => !modalRecurringOriginalIds.includes(r.id) || keptIds.has(r.id));
 
   recurringToSave.forEach(ev => {
-    const {_recurring, _recurringId, ...toSave} = ev;
+    const {_recurring, _recurringId, _multiday, startDayKey, endDayKey, ...toSave} = ev;
     if (!toSave.id) toSave.id = Date.now().toString();
     const existIdx = allRecurring.findIndex(r => r.id === (_recurringId||toSave.id));
     if (existIdx >= 0) allRecurring[existIdx] = toSave;
     else allRecurring.push(toSave);
   });
-  // If a recurring event was removed from this modal, drop it from the global store.
   DATA['__recurring__'] = JSON.stringify(allRecurring);
   markDirty('__recurring__');
+
+  const keptMultiIds = new Set(multidayToSave.map(ev => ev.id).filter(Boolean));
+  let allMultiday = getMultiday()
+    .filter(m => !modalMultidayOriginalIds.includes(m.id) || keptMultiIds.has(m.id));
+
+  multidayToSave.forEach(ev => {
+    normalizeMultidayRange(ev);
+    const {_recurring, _recurringId, _multiday, pattern, days, monthDays, startDate, endDate, startTime, endTime, ...toSave} = ev;
+    if (!toSave.id) toSave.id = Date.now().toString();
+    toSave.startDayKey = ev.startDayKey;
+    toSave.endDayKey = ev.endDayKey;
+    const existIdx = allMultiday.findIndex(m => m.id === toSave.id);
+    if (existIdx >= 0) {
+      // Preserve google sync fields if the modal copy lacked them
+      const prev = allMultiday[existIdx];
+      allMultiday[existIdx] = {
+        ...toSave,
+        googleEventId: toSave.googleEventId || prev.googleEventId,
+        googleSyncedAt: toSave.googleSyncedAt || prev.googleSyncedAt,
+      };
+    } else {
+      allMultiday.push(toSave);
+    }
+  });
+  DATA[MULTIDAY_SYNC_KEY] = JSON.stringify(allMultiday);
+  markDirty(MULTIDAY_SYNC_KEY);
 
   const flightsToSave = modalFlights.filter(f => f.flightNum || f.airline || f.originCode || f.destCode);
   const normalized = flightsToSave.map((f, i) => {
@@ -3280,7 +3532,8 @@ function saveModal() {
   }
 
   document.getElementById('modal-overlay').classList.remove('open');
-  modalDk = null; modalDate = null; modalEvents = []; modalFlights = []; modalRecurringOriginalIds = [];
+  modalDk = null; modalDate = null; modalEvents = []; modalFlights = [];
+  modalRecurringOriginalIds = []; modalMultidayOriginalIds = [];
   render();
   clearTimeout(_syncTimer);
   _syncTimer = null;
