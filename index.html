@@ -1540,6 +1540,8 @@ async function pushToRemote() {
       _dirtyKeys.clear();
       _deletedKeys.clear();
       setSyncStatus('saved', '✓ Saved');
+      // Fire-and-forget Google Calendar push (Phase 1: non-recurring day events).
+      syncGoogleCalendar();
     } else {
       _localDirty = true;
       _pushPending = true;
@@ -1554,6 +1556,78 @@ async function pushToRemote() {
   }
   _pushing = false;
   if (_pushPending) { _pushPending = false; pushToRemote(); }
+}
+
+/**
+ * Merge googleEventId / googleSyncedAt from a Google sync response into local DATA
+ * without clobbering in-flight local edits on other fields.
+ */
+function mergeGoogleSyncIntoLocal(remote, revision) {
+  if (!remote || typeof remote !== 'object') return;
+  Object.keys(remote).forEach(k => {
+    if (k === '__google_synced_ids__') {
+      DATA[k] = remote[k];
+      return;
+    }
+    if (!k.endsWith('-events')) return;
+    let remoteEvents;
+    try { remoteEvents = JSON.parse(remote[k] || '[]'); } catch (_) { return; }
+    if (!Array.isArray(remoteEvents)) return;
+
+    let localEvents;
+    try { localEvents = JSON.parse(DATA[k] || '[]'); } catch (_) { localEvents = []; }
+    if (!Array.isArray(localEvents)) localEvents = [];
+
+    const byId = new Map(remoteEvents.filter(e => e && e.id).map(e => [String(e.id), e]));
+    let changed = false;
+    localEvents.forEach(ev => {
+      if (!ev || !ev.id) return;
+      const r = byId.get(String(ev.id));
+      if (!r) return;
+      if (r.googleEventId && ev.googleEventId !== r.googleEventId) {
+        ev.googleEventId = r.googleEventId;
+        changed = true;
+      }
+      if (r.googleSyncedAt && ev.googleSyncedAt !== r.googleSyncedAt) {
+        ev.googleSyncedAt = r.googleSyncedAt;
+        changed = true;
+      }
+    });
+    // If local is missing this key entirely, take server events (includes google ids).
+    if (!DATA[k] && remote[k]) {
+      DATA[k] = remote[k];
+      changed = true;
+    } else if (changed) {
+      DATA[k] = JSON.stringify(localEvents);
+    }
+  });
+  if (Number.isFinite(revision) && revision > 0) _serverRevision = revision;
+  saveLocal(DATA);
+}
+
+let _googleSyncing = false;
+async function syncGoogleCalendar() {
+  if (_googleSyncing) return;
+  _googleSyncing = true;
+  try {
+    const r = await apiFetch('/api/google-calendar/sync', { method: 'POST' });
+    if (r.status === 503) return; // not configured
+    if (r.status === 401) return;
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      console.warn('[FP] Google Calendar sync failed:', r.status, body.error || '');
+      return;
+    }
+    const body = await r.json();
+    mergeGoogleSyncIntoLocal(body.data || {}, Number(body.revision));
+    if (body.errors && body.errors.length) {
+      console.warn('[FP] Google Calendar sync partial errors:', body.errors);
+    }
+  } catch (e) {
+    console.warn('[FP] Google Calendar sync error:', e);
+  } finally {
+    _googleSyncing = false;
+  }
 }
 
 async function syncNow() {
