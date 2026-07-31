@@ -164,13 +164,58 @@
   .grid-dow-headers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
   .dow-hdr { text-align: center; font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); padding: 4px 0; }
   .grid-weeks { display: flex; flex-direction: column; gap: 4px; }
-  .grid-week  { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .grid-week  {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+    position: relative;
+    --allday-lanes: 0;
+    --allday-banner-h: 18px;
+    --allday-banner-gap: 2px;
+    --allday-top: 26px;
+  }
+
+  .grid-week-banners {
+    position: absolute;
+    left: 0; right: 0;
+    top: var(--allday-top);
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    grid-auto-rows: var(--allday-banner-h);
+    row-gap: var(--allday-banner-gap);
+    pointer-events: none;
+    z-index: 3;
+  }
+  .allday-banner {
+    pointer-events: auto;
+    display: flex; align-items: center; gap: 4px;
+    min-width: 0; height: var(--allday-banner-h);
+    padding: 0 8px; margin: 0 1px;
+    font-size: 11px; font-weight: 600; line-height: 1;
+    border-radius: 4px; cursor: pointer;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    background: #eceae4; color: var(--text); border: 1px solid var(--border-strong);
+    box-sizing: border-box;
+  }
+  .allday-banner.is-multiday {
+    background: #e8f0ef; color: #244844; border-color: #8aa9a6;
+    border-left: 3px solid #3d6b66;
+  }
+  .allday-banner.continues-left { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: 0; }
+  .allday-banner.continues-right { border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0; }
+  .allday-banner:hover { filter: brightness(0.97); }
+  .allday-banner-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .grid-cell {
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
-    min-height: 90px; padding: 8px; display: flex; flex-direction: column; gap: 3px;
+    min-height: 90px;
+    padding: 8px;
+    padding-top: calc(var(--allday-top) + (var(--allday-lanes) * (var(--allday-banner-h) + var(--allday-banner-gap))));
+    display: flex; flex-direction: column; gap: 3px;
     transition: background 0.1s; cursor: pointer;
     min-width: 0; overflow: hidden; position: relative;
+  }
+  .grid-cell .cell-num {
+    position: absolute; top: 8px; left: 8px;
   }
   .grid-cell.past::after {
     content: '';
@@ -214,10 +259,6 @@
     border-left: 3px solid #3d6b66;
   }
   .cell-event-chip .chip-time { color: var(--text-muted); margin-left: 3px; }
-  .grid-cell.has-multiday {
-    box-shadow: inset 3px 0 0 #3d6b66;
-    background-image: linear-gradient(180deg, rgba(61, 107, 102, 0.07), transparent 42%);
-  }
   .dv-allday-section { margin: 12px 0 4px; }
   .dv-allday-title {
     font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
@@ -2480,6 +2521,130 @@ function normalizeMultidayRange(ev) {
   ev.endTime = '';
 }
 
+function isUntimedAllDayEvent(ev) {
+  return Boolean(ev && (ev.title || ev.business) && !ev.startTime && !ev.endTime);
+}
+
+/** Single-day all-day events for a date (from that day's events array only). */
+function getSingleDayAllDayBannerEvents(date) {
+  const key = dkFromDate(date);
+  return getEvents(key)
+    .filter(isUntimedAllDayEvent)
+    .map(ev => ({
+      ...ev,
+      _allday: true,
+      _multiday: false,
+      startDayKey: key,
+      endDayKey: key,
+    }));
+}
+
+/** Build 7 slots (Sun–Sat) for a month-grid week; missing days are null (empty padding). */
+function weekSlotsFromMonthWeek(weekDates) {
+  const slots = [null, null, null, null, null, null, null];
+  (weekDates || []).forEach(date => {
+    if (date) slots[date.getDay()] = date;
+  });
+  return slots;
+}
+
+/**
+ * Clip an inclusive day-key range to one week row.
+ * Returns { startCol, endColInclusive, continuesLeft, continuesRight, ev } or null.
+ */
+function allDaySegmentForWeek(ev, slots) {
+  if (!ev || !ev.startDayKey || !ev.endDayKey) return null;
+  let startCol = -1;
+  let endCol = -1;
+  for (let c = 0; c < 7; c++) {
+    if (!slots[c]) continue;
+    if (!multidayApplies(ev, slots[c])) continue;
+    if (startCol < 0) startCol = c;
+    endCol = c;
+  }
+  if (startCol < 0) return null;
+
+  const visibleDates = slots.filter(Boolean);
+  const weekFirst = visibleDates[0];
+  const weekLast = visibleDates[visibleDates.length - 1];
+  const continuesLeft = compareDayKeys(ev.startDayKey, dkFromDate(weekFirst)) < 0;
+  const continuesRight = compareDayKeys(dkFromDate(weekLast), ev.endDayKey) < 0;
+  return {
+    ev,
+    startCol,
+    endCol,
+    continuesLeft,
+    continuesRight,
+  };
+}
+
+/** Greedy lane packing so overlapping banners stack instead of colliding. */
+function assignAllDayBannerLanes(segments) {
+  const sorted = [...segments].sort((a, b) => {
+    if (a.startCol !== b.startCol) return a.startCol - b.startCol;
+    return (b.endCol - b.startCol) - (a.endCol - a.startCol);
+  });
+  const laneEnds = []; // exclusive end col occupied per lane
+  sorted.forEach(seg => {
+    let lane = laneEnds.findIndex(end => end <= seg.startCol);
+    if (lane < 0) {
+      lane = laneEnds.length;
+      laneEnds.push(seg.endCol + 1);
+    } else {
+      laneEnds[lane] = seg.endCol + 1;
+    }
+    seg.lane = lane;
+  });
+  return { segments: sorted, laneCount: laneEnds.length };
+}
+
+function collectAllDaySegmentsForWeek(slots) {
+  const byId = new Map();
+
+  getMultiday().forEach(ev => {
+    if (!ev || !ev.id || !(ev.title || ev.business)) return;
+    const seg = allDaySegmentForWeek({
+      ...ev,
+      _multiday: true,
+      _allday: true,
+    }, slots);
+    if (seg) byId.set(String(ev.id), seg);
+  });
+
+  slots.forEach(date => {
+    if (!date) return;
+    getSingleDayAllDayBannerEvents(date).forEach(ev => {
+      const id = String(ev.id);
+      if (byId.has(id)) return;
+      const seg = allDaySegmentForWeek(ev, slots);
+      if (seg) byId.set(id, seg);
+    });
+  });
+
+  return assignAllDayBannerLanes([...byId.values()]);
+}
+
+function renderAllDayBannerEl(seg) {
+  const ev = seg.ev;
+  const el = document.createElement('div');
+  el.className = 'allday-banner'
+    + (ev._multiday ? ' is-multiday' : '')
+    + (seg.continuesLeft ? ' continues-left' : '')
+    + (seg.continuesRight ? ' continues-right' : '');
+  el.style.gridColumn = `${seg.startCol + 1} / ${seg.endCol + 2}`;
+  el.style.gridRow = String((seg.lane || 0) + 1);
+  el.title = ev._multiday
+    ? `${ev.title || 'Untitled'} · ${formatMultidayRangeLabel(ev)}`
+    : (ev.title || 'Untitled');
+  el.innerHTML = `<span class="allday-banner-title">${escHtml(ev.title || 'Untitled')}</span>`;
+  el.addEventListener('click', e => {
+    e.stopPropagation();
+    const start = dayKeyToLocalDate(ev.startDayKey);
+    if (start) openModal(ev.startDayKey, start);
+  });
+  return el;
+}
+
 function getFlights(key) { try { return JSON.parse(DATA[key+'-flights'] || '[]'); } catch(e) { return []; } }
 function saveFlights(key, arr) {
   const dk = key + '-flights';
@@ -2742,31 +2907,42 @@ function renderGrid() {
 
   const weeksEl = document.createElement('div'); weeksEl.className = 'grid-weeks';
 
-  weeks.forEach((week, wi) => {
-    const startDow = week[0].getDay(); const endDow = week[week.length-1].getDay();
+  weeks.forEach((week) => {
+    const startDow = week[0].getDay();
+    const endDow = week[week.length - 1].getDay();
+    const slots = weekSlotsFromMonthWeek(week);
+    const { segments, laneCount } = collectAllDaySegmentsForWeek(slots);
 
-    const weekRow = document.createElement('div'); weekRow.className = 'grid-week';
-    for (let i = 0; i < startDow; i++) { const c = document.createElement('div'); c.className = 'grid-cell empty'; weekRow.appendChild(c); }
+    const weekRow = document.createElement('div');
+    weekRow.className = 'grid-week';
+    weekRow.style.setProperty('--allday-lanes', String(laneCount));
+
+    for (let i = 0; i < startDow; i++) {
+      const c = document.createElement('div');
+      c.className = 'grid-cell empty';
+      weekRow.appendChild(c);
+    }
 
     week.forEach(date => {
-      const dow = date.getDay(); const key = dkFromDate(date);
-      const status = DATA[key+'-status']||null;
-      const note = DATA[key]||'';
-      const events = getEventsForDay(date);
-
+      const dow = date.getDay();
+      const key = dkFromDate(date);
+      const status = DATA[key + '-status'] || null;
+      // Timed (+ recurring timed) only — all-day / multi-day render in the banner layer.
+      const timedEvents = getEventsForDay(date).filter(ev =>
+        !ev._multiday && !isUntimedAllDayEvent(ev)
+      );
       const flights = getFlights(key);
       const cell = document.createElement('div');
       let cls = 'grid-cell';
-      if (dow===0||dow===6) cls += ' weekend';
-      if (isToday(date))    cls += ' is-today';
-      if (isPast(date))     cls += ' past';
-      if (status)           cls += ' status-'+status;
-      if (events.some(ev => ev._multiday)) cls += ' has-multiday';
+      if (dow === 0 || dow === 6) cls += ' weekend';
+      if (isToday(date)) cls += ' is-today';
+      if (isPast(date)) cls += ' past';
+      if (status) cls += ' status-' + status;
       cell.className = cls;
       cell.innerHTML = `
         <div class="cell-num">${date.getDate()}</div>
         ${cellDayMetaHtml(key)}
-        ${events.map(ev => cellChipHTML(ev)).join('')}
+        ${timedEvents.map(ev => cellChipHTML(ev)).join('')}
         ${flights.map(fl => cellFlightChipHTML(fl)).join('')}
         ${status ? `<div class="cell-tag t-${status}">${STATUS_LABELS[status]}</div>` : ''}
       `;
@@ -2777,7 +2953,19 @@ function renderGrid() {
       weekRow.appendChild(cell);
     });
 
-    for (let i = endDow+1; i < 7; i++) { const c = document.createElement('div'); c.className = 'grid-cell empty'; weekRow.appendChild(c); }
+    for (let i = endDow + 1; i < 7; i++) {
+      const c = document.createElement('div');
+      c.className = 'grid-cell empty';
+      weekRow.appendChild(c);
+    }
+
+    if (segments.length) {
+      const banners = document.createElement('div');
+      banners.className = 'grid-week-banners';
+      segments.forEach(seg => banners.appendChild(renderAllDayBannerEl(seg)));
+      weekRow.appendChild(banners);
+    }
+
     weeksEl.appendChild(weekRow);
   });
   el.appendChild(weeksEl);
