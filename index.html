@@ -272,18 +272,44 @@
   .dv-allday-chip .chip-time { color: var(--text-muted); font-size: 11px; margin-left: 6px; }
   .modal-event-card.is-multiday { border-color: #8aa9a6; border-left: 3px solid #3d6b66; }
   .week-allday-row {
-    display: grid; gap: 4px; margin-bottom: 8px;
-    grid-template-columns: 52px repeat(7, 1fr);
+    display: grid; gap: 4px; margin-bottom: 10px;
+    grid-template-columns: 52px minmax(0, 1fr);
+    align-items: stretch;
   }
   .week-allday-gutter {
     font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase;
     letter-spacing: 0.04em; padding-top: 6px;
   }
-  .week-allday-cell {
-    min-height: 28px; background: rgba(61, 107, 102, 0.04);
-    border-radius: 4px; padding: 3px; display: flex; flex-direction: column; gap: 2px;
+  .week-allday-track {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+    --allday-lanes: 0;
+    --allday-banner-h: 18px;
+    --allday-banner-gap: 2px;
+    min-height: calc(6px + max(1, var(--allday-lanes)) * (var(--allday-banner-h) + var(--allday-banner-gap)));
   }
-  .week-allday-cell.has-multiday { box-shadow: inset 2px 0 0 #3d6b66; }
+  .week-allday-day {
+    min-height: 100%;
+    background: rgba(61, 107, 102, 0.04);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .week-allday-day.is-today { background: rgba(61, 107, 102, 0.1); }
+  .week-allday-banners {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+    grid-auto-rows: var(--allday-banner-h);
+    row-gap: var(--allday-banner-gap);
+    padding-top: 4px;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .week-allday-banners .allday-banner { pointer-events: auto; }
 
   .cell-tag {
     font-size: 9px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;
@@ -3033,24 +3059,40 @@ function renderWeekGrid() {
   wrap.className = 'sched-wrap';
   wrap.innerHTML = '<div class="sched-title">Week schedule · 4am–6pm · click a slot to block task time</div>';
 
+  // Full Sun–Sat slots (no empty padding) — same banner math as month view.
+  const slots = weekSlotsFromMonthWeek(dates);
+  const { segments, laneCount } = collectAllDaySegmentsForWeek(slots);
+
   const allday = document.createElement('div');
   allday.className = 'week-allday-row';
-  allday.innerHTML = `<div class="week-allday-gutter">All day</div>` + dates.map(date => {
+
+  const gutterLabel = document.createElement('div');
+  gutterLabel.className = 'week-allday-gutter';
+  gutterLabel.textContent = 'All day';
+  allday.appendChild(gutterLabel);
+
+  const track = document.createElement('div');
+  track.className = 'week-allday-track';
+  track.style.setProperty('--allday-lanes', String(Math.max(laneCount, 0)));
+
+  dates.forEach(date => {
     const key = dkFromDate(date);
-    const md = getEventsForDay(date).filter(ev => ev._multiday || (!ev.startTime && !ev.endTime && !ev._recurring));
-    const hasMd = md.some(ev => ev._multiday);
-    return `<div class="week-allday-cell${hasMd ? ' has-multiday' : ''}" data-key="${key}">${
-      md.map(ev => cellChipHTML(ev)).join('')
-    }</div>`;
-  }).join('');
-  wrap.appendChild(allday);
-  allday.querySelectorAll('.week-allday-cell').forEach(cell => {
-    cell.addEventListener('click', () => {
-      const key = cell.dataset.key;
-      const date = dates.find(d => dkFromDate(d) === key);
-      if (date) openModal(key, date);
-    });
+    const dayCell = document.createElement('div');
+    dayCell.className = 'week-allday-day' + (isToday(date) ? ' is-today' : '');
+    dayCell.dataset.key = key;
+    dayCell.addEventListener('click', () => openModal(key, date));
+    track.appendChild(dayCell);
   });
+
+  if (segments.length) {
+    const banners = document.createElement('div');
+    banners.className = 'week-allday-banners';
+    segments.forEach(seg => banners.appendChild(renderAllDayBannerEl(seg)));
+    track.appendChild(banners);
+  }
+
+  allday.appendChild(track);
+  wrap.appendChild(allday);
 
   const grid = document.createElement('div');
   grid.className = 'sched-grid week-mode';
