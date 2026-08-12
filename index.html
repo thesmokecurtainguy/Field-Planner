@@ -25,6 +25,7 @@
     --mis-bg:   #FCE8F3;   --mis-border:   #E8157A;   --mis-text:   #96094F;
     --today-bg: #EBF3FC; --today-border: #378ADD;
     --weekend-bg: #F5F3EE;
+    --google-bg: #F8F0E3; --google-border: #A67C52; --google-text: #6B4E16;
     --past-opacity: 0.38;
     --radius: 10px;
     --radius-sm: 6px;
@@ -71,6 +72,7 @@
   .pip-vpres    { background: var(--vpres-border); }
   .pip-mis      { background: var(--mis-border); }
   .pip-weekend  { background: var(--text-faint); }
+  .pip-google   { background: var(--google-border); }
 
   main { padding: 0 2rem 3rem; }
 
@@ -132,9 +134,20 @@
   }
   .event-chip:hover { background: #E8E4DC; }
   .event-chip.is-multiday:hover { background: #dce8e6; }
+  .event-chip.is-google {
+    background: var(--google-bg); border-color: var(--google-border);
+    border-left: 3px solid var(--google-border); color: var(--google-text);
+  }
+  .event-chip.is-google:hover { background: #f0e4d0; }
   .event-chip .chip-title { font-weight: 500; }
   .event-chip .chip-time  { color: var(--text-muted); font-size: 10px; }
   .chip-recur { font-size: 10px; color: var(--text-faint); }
+  .chip-google-lock {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0;
+    background: var(--google-border); color: #fff;
+    font-size: 8px; font-weight: 700; line-height: 1;
+  }
 
   .add-event-link {
     font-size: 11px; color: var(--text-faint); background: none; border: 1px dashed var(--border-strong);
@@ -200,6 +213,10 @@
     background: #e8f0ef; color: #244844; border-color: #8aa9a6;
     border-left: 3px solid #3d6b66;
   }
+  .allday-banner.is-google {
+    background: var(--google-bg); color: var(--google-text);
+    border-color: var(--google-border); border-left: 3px solid var(--google-border);
+  }
   .allday-banner.continues-left { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: 0; }
   .allday-banner.continues-right { border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0; }
   .allday-banner:hover { filter: brightness(0.97); }
@@ -258,6 +275,10 @@
     background: #e8f0ef; border: 1px solid #8aa9a6;
     border-left: 3px solid #3d6b66;
   }
+  .cell-event-chip.is-google {
+    background: var(--google-bg); color: var(--google-text);
+    border: 1px solid var(--google-border); border-left: 3px solid var(--google-border);
+  }
   .cell-event-chip .chip-time { color: var(--text-muted); margin-left: 3px; }
   .dv-allday-section { margin: 12px 0 4px; }
   .dv-allday-title {
@@ -268,6 +289,11 @@
   .dv-allday-chip {
     background: #e8f0ef; border: 1px solid #8aa9a6; border-left: 3px solid #3d6b66;
     border-radius: 6px; padding: 8px 12px; cursor: pointer; font-size: 13px;
+  }
+  .dv-allday-chip.is-google {
+    background: var(--google-bg); border-color: var(--google-border);
+    border-left-color: var(--google-border); color: var(--google-text);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
   }
   .dv-allday-chip .chip-time { color: var(--text-muted); font-size: 11px; margin-left: 6px; }
   .modal-event-card.is-multiday { border-color: #8aa9a6; border-left: 3px solid #3d6b66; }
@@ -450,6 +476,9 @@
     background: var(--surface2); color: var(--text);
   }
   .sched-item.is-event { background: rgba(55, 138, 221, 0.12); border-color: rgba(55, 138, 221, 0.35); }
+  .sched-item.is-google {
+    background: var(--google-bg); border-color: var(--google-border); color: var(--google-text);
+  }
   .sched-item.is-flight { background: rgba(155, 89, 208, 0.12); border-color: rgba(155, 89, 208, 0.35); }
   .sched-item.is-block { background: rgba(29, 158, 117, 0.14); border-color: rgba(29, 158, 117, 0.4); }
   .sched-item.is-overdue {
@@ -682,6 +711,34 @@
   .add-event-btn:hover { border-color: var(--text); color: var(--text); }
 
   .modal-footer { display: flex; justify-content: flex-end; margin-top: 16px; }
+
+  /* Read-only Google overlay event details */
+  .google-detail-banner {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--google-bg); border: 1px solid var(--google-border);
+    border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 14px;
+    color: var(--google-text); font-size: 13px; line-height: 1.4;
+  }
+  .google-detail-banner .lock {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 5px; flex-shrink: 0;
+    background: var(--google-border); color: #fff;
+    font-size: 11px; font-weight: 700; line-height: 1;
+  }
+  .google-detail-row {
+    display: grid; grid-template-columns: 88px 1fr; gap: 8px;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .google-detail-row:last-of-type { border-bottom: none; }
+  .google-detail-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-faint); padding-top: 2px;
+  }
+  .google-detail-value { color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  .google-detail-value.is-muted { color: var(--text-muted); }
+  a.google-open-link {
+    color: var(--google-text); font-size: 13px; font-weight: 500;
+  }
   .modal-save {
     background: var(--text); color: #fff; border: none; border-radius: var(--radius-sm);
     padding: 8px 22px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
@@ -1282,6 +1339,7 @@
   <div class="legend-item"><div class="legend-pip pip-vpres"></div> Virtual Pres.</div>
   <div class="legend-item"><div class="legend-pip pip-mis"></div> MIS</div>
   <div class="legend-item"><div class="legend-pip pip-weekend"></div> Weekend</div>
+  <div class="legend-item"><div class="legend-pip pip-google"></div> Google</div>
 </div>
 
 <main>
@@ -1339,6 +1397,27 @@
     <div class="modal-footer" style="margin-top:12px;justify-content:space-between;flex-wrap:wrap;gap:10px;display:flex;">
       <button type="button" class="todo-btn" onclick="openTodoFromPlateModal()">Open Todo view…</button>
       <button type="button" class="modal-save" onclick="closePlateModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Read-only Google Calendar overlay details (never writes to payload) -->
+<div class="modal-overlay" id="google-overlay-modal" onclick="if(event.target===this)closeGoogleOverlayModal()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-title" id="google-overlay-title">Google event</div>
+    <div class="google-detail-banner">
+      <span class="lock" aria-hidden="true">G</span>
+      <div>
+        <strong>Managed on Google Calendar</strong>
+        <div style="margin-top:2px;font-size:12px;opacity:0.9;">
+          Read-only in Field Planner — edit or delete this event on Google.
+        </div>
+      </div>
+    </div>
+    <div id="google-overlay-body"></div>
+    <div class="modal-footer" style="justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <a class="google-open-link" id="google-overlay-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">Open in Google Calendar</a>
+      <button type="button" class="modal-save" onclick="closeGoogleOverlayModal()">Close</button>
     </div>
   </div>
 </div>
@@ -1749,6 +1828,10 @@ async function syncGoogleCalendar(keys) {
       }
       const body = await r.json();
       mergeGoogleSyncIntoLocal(body.data || {}, Number(body.revision));
+      // Synced IDs changed — drop overlay cache so duplicates don't linger.
+      _overlayCacheKey = '';
+      _overlayFetchedAt = 0;
+      scheduleGoogleOverlayFetch();
       if (body.rateLimited) {
         console.warn('[FP] Google Calendar rate limited — will retry on next event save');
       }
@@ -1765,6 +1848,185 @@ async function syncGoogleCalendar(keys) {
   } finally {
     _googleSyncing = false;
   }
+}
+
+// ── Google Calendar read-only overlay (never written into DATA / payload) ─────
+const OVERLAY_CLIENT_TTL_MS = 60_000;
+const OVERLAY_DEBOUNCE_MS = 350;
+let GOOGLE_OVERLAY = []; // [{ id, title, ..., startDayKey, endDayKey, allDay, ... }]
+let _overlayCacheKey = '';
+let _overlayFetchedAt = 0;
+let _overlayTimer = null;
+let _overlayInflight = null;
+let _overlayReqSeq = 0;
+
+function isoFromDate(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/** Inclusive ISO date range for the currently visible calendar view. */
+function visibleOverlayIsoRange() {
+  if (currentView === 'week-grid' || currentView === 'week-list') {
+    const dates = getWeekDates(curWeekStart);
+    return { start: isoFromDate(dates[0]), end: isoFromDate(dates[6]) };
+  }
+  if (currentView === 'day') {
+    const iso = isoFromDate(curDay);
+    return { start: iso, end: iso };
+  }
+  if (currentView === 'grid' || currentView === 'list') {
+    const weeks = getWeeks(cur.year, cur.month);
+    const first = weeks[0][0];
+    const lastWeek = weeks[weeks.length - 1];
+    const last = lastWeek[lastWeek.length - 1];
+    return { start: isoFromDate(first), end: isoFromDate(last) };
+  }
+  // Dashboard / todo: small lookahead around today (cheap, still cached).
+  const start = new Date(today);
+  const end = new Date(today);
+  end.setDate(end.getDate() + 14);
+  return { start: isoFromDate(start), end: isoFromDate(end) };
+}
+
+function overlayApplies(ev, date) {
+  if (!ev || !ev.startDayKey || !ev.endDayKey) return false;
+  const k = dkFromDate(date);
+  return compareDayKeys(ev.startDayKey, k) <= 0 && compareDayKeys(k, ev.endDayKey) <= 0;
+}
+
+function getOverlayForDay(date) {
+  return GOOGLE_OVERLAY.filter(ev => overlayApplies(ev, date));
+}
+
+function isOverlayAllDay(ev) {
+  return Boolean(ev && (ev.allDay || (!ev.startTime && !ev.endTime)));
+}
+
+function findOverlayById(id) {
+  return GOOGLE_OVERLAY.find(ev => String(ev.id) === String(id)) || null;
+}
+
+function scheduleGoogleOverlayFetch() {
+  if (currentView === 'todo') return;
+  clearTimeout(_overlayTimer);
+  _overlayTimer = setTimeout(() => {
+    _overlayTimer = null;
+    ensureGoogleOverlay();
+  }, OVERLAY_DEBOUNCE_MS);
+}
+
+async function ensureGoogleOverlay() {
+  if (currentView === 'todo') return;
+  const range = visibleOverlayIsoRange();
+  if (!range.start || !range.end) return;
+  const cacheKey = `${range.start}|${range.end}`;
+  const now = Date.now();
+  if (
+    cacheKey === _overlayCacheKey
+    && GOOGLE_OVERLAY.length >= 0
+    && now - _overlayFetchedAt < OVERLAY_CLIENT_TTL_MS
+  ) {
+    return;
+  }
+  if (_overlayInflight && _overlayInflight.key === cacheKey) return;
+
+  const seq = ++_overlayReqSeq;
+  const promise = (async () => {
+    try {
+      const r = await apiFetch(
+        `/api/google-calendar/overlay?start=${encodeURIComponent(range.start)}&end=${encodeURIComponent(range.end)}`
+      );
+      if (r.status === 503 || r.status === 401) return;
+      if (!r.ok) {
+        const body = await r.json().catch(() => ({}));
+        console.warn('[FP] Google overlay failed:', r.status, body.error || '');
+        return;
+      }
+      const body = await r.json();
+      if (seq !== _overlayReqSeq) return; // stale response
+      GOOGLE_OVERLAY = Array.isArray(body.events) ? body.events : [];
+      _overlayCacheKey = cacheKey;
+      _overlayFetchedAt = Date.now();
+      // Re-paint calendar views with overlay data (avoid recursive ensure).
+      renderCalendarViewsOnly();
+    } catch (e) {
+      console.warn('[FP] Google overlay error:', e);
+    } finally {
+      if (_overlayInflight && _overlayInflight.seq === seq) _overlayInflight = null;
+    }
+  })();
+  _overlayInflight = { key: cacheKey, seq, promise };
+  await promise;
+}
+
+/** Re-render the active calendar surface without kicking off another overlay fetch. */
+function renderCalendarViewsOnly() {
+  if (currentView === 'dashboard') renderDashboard();
+  else if (currentView === 'grid') renderGrid();
+  else if (currentView === 'list') renderList();
+  else if (currentView === 'week-grid') renderWeekGrid();
+  else if (currentView === 'week-list') renderWeekList();
+  else if (currentView === 'day') renderDay();
+}
+
+function openGoogleOverlayModal(ev) {
+  if (!ev) return;
+  const titleEl = document.getElementById('google-overlay-title');
+  const bodyEl = document.getElementById('google-overlay-body');
+  const linkEl = document.getElementById('google-overlay-link');
+  if (!titleEl || !bodyEl) return;
+
+  titleEl.textContent = ev.title || 'Google event';
+
+  const when = ev.allDay || (!ev.startTime && !ev.endTime)
+    ? (ev.startDayKey === ev.endDayKey
+      ? `All day · ${formatMultidayRangeLabel(ev)}`
+      : `All day · ${formatMultidayRangeLabel(ev)}`)
+    : (ev.startDayKey === ev.endDayKey
+      ? `${formatMultidayRangeLabel(ev)} · ${formatTimeRange(ev.startTime, ev.endTime)}`
+      : `${formatMultidayRangeLabel(ev)} · ${formatTimeRange(ev.startTime, ev.endTime)}`);
+
+  const rows = [
+    ['When', when || '—'],
+    ['Location', ev.location || ''],
+    ['Description', ev.description || ''],
+  ];
+  bodyEl.innerHTML = rows.map(([label, value]) => {
+    const empty = !value;
+    return `<div class="google-detail-row">
+      <div class="google-detail-label">${escHtml(label)}</div>
+      <div class="google-detail-value${empty ? ' is-muted' : ''}">${escHtml(empty ? '—' : value)}</div>
+    </div>`;
+  }).join('');
+
+  if (linkEl) {
+    if (ev.htmlLink) {
+      linkEl.href = ev.htmlLink;
+      linkEl.style.display = '';
+    } else {
+      linkEl.removeAttribute('href');
+      linkEl.style.display = 'none';
+    }
+  }
+  document.getElementById('google-overlay-modal')?.classList.add('open');
+}
+
+function closeGoogleOverlayModal() {
+  document.getElementById('google-overlay-modal')?.classList.remove('open');
+}
+
+function bindGoogleOverlayClicks(root) {
+  if (!root) return;
+  root.querySelectorAll('[data-google-id]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const ev = findOverlayById(el.dataset.googleId);
+      if (ev) openGoogleOverlayModal(ev);
+    });
+  });
 }
 
 async function syncNow() {
@@ -2278,6 +2540,14 @@ function scheduleItemsForDay(dayKey, date) {
     if (sm != null && (em == null || em <= sm)) em = sm + 30;
     items.push({ kind: 'event', sm, em, ev });
   });
+  getOverlayForDay(date).forEach(ev => {
+    if (isOverlayAllDay(ev)) return;
+    const sm = timeToMinutes(ev.startTime);
+    let em = timeToMinutes(ev.endTime);
+    if (sm == null) return;
+    if (em == null || em <= sm) em = sm + 30;
+    items.push({ kind: 'google', sm, em, ev });
+  });
   getFlights(dayKey).forEach(fl => {
     const sm = timeToMinutes(fl.departureTime);
     items.push({ kind: 'flight', sm, em: sm != null ? sm + 30 : null, fl });
@@ -2306,6 +2576,13 @@ function renderScheduleItemMarkup(item) {
     const ev = item.ev;
     return `<div class="sched-item is-event" title="${escHtml(ev.title || 'Event')}">
       <span class="sched-item-title">${escHtml(ev.title || 'Event')}</span>
+      <span class="sched-item-meta">${escHtml(formatTimeRange(ev.startTime, ev.endTime))}</span>
+    </div>`;
+  }
+  if (item.kind === 'google') {
+    const ev = item.ev;
+    return `<div class="sched-item is-google" data-google-id="${esc(ev.id)}" title="Google Calendar (read-only): ${escHtml(ev.title || 'Event')}">
+      <span class="sched-item-title"><span class="chip-google-lock" aria-hidden="true">G</span> ${escHtml(ev.title || 'Event')}</span>
       <span class="sched-item-meta">${escHtml(formatTimeRange(ev.startTime, ev.endTime))}</span>
     </div>`;
   }
@@ -2382,6 +2659,7 @@ function wireScheduleGrid(root) {
       openTodoFromTaskChip(el.dataset.todoId);
     });
   });
+  bindGoogleOverlayClicks(root);
 }
 
 function todoDueHtml(id, dueBy) {
@@ -2647,6 +2925,20 @@ function collectAllDaySegmentsForWeek(slots) {
     });
   });
 
+  // Google-origin all-day / multi-day overlay events (read-only).
+  GOOGLE_OVERLAY.forEach(ev => {
+    if (!ev || !ev.id || !isOverlayAllDay(ev)) return;
+    const id = 'g:' + String(ev.id);
+    if (byId.has(id)) return;
+    const seg = allDaySegmentForWeek({
+      ...ev,
+      _google: true,
+      _allday: true,
+      _multiday: ev.startDayKey !== ev.endDayKey,
+    }, slots);
+    if (seg) byId.set(id, seg);
+  });
+
   return assignAllDayBannerLanes([...byId.values()]);
 }
 
@@ -2654,11 +2946,21 @@ function renderAllDayBannerEl(seg) {
   const ev = seg.ev;
   const el = document.createElement('div');
   el.className = 'allday-banner'
-    + (ev._multiday ? ' is-multiday' : '')
+    + (ev._google ? ' is-google' : (ev._multiday ? ' is-multiday' : ''))
     + (seg.continuesLeft ? ' continues-left' : '')
     + (seg.continuesRight ? ' continues-right' : '');
   el.style.gridColumn = `${seg.startCol + 1} / ${seg.endCol + 2}`;
   el.style.gridRow = String((seg.lane || 0) + 1);
+  if (ev._google) {
+    el.dataset.googleId = String(ev.id);
+    el.title = `Google Calendar (read-only): ${ev.title || 'Untitled'}${ev._multiday ? ' · ' + formatMultidayRangeLabel(ev) : ''}`;
+    el.innerHTML = `<span class="chip-google-lock" aria-hidden="true">G</span><span class="allday-banner-title">${escHtml(ev.title || 'Untitled')}</span>`;
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      openGoogleOverlayModal(ev);
+    });
+    return el;
+  }
   el.title = ev._multiday
     ? `${ev.title || 'Untitled'} · ${formatMultidayRangeLabel(ev)}`
     : (ev.title || 'Untitled');
@@ -2781,6 +3083,16 @@ function escHtml(s) {
 }
 
 function chipHTML(ev, key) {
+  if (ev && ev._google) {
+    const t = ev.allDay
+      ? (ev.startDayKey !== ev.endDayKey ? formatMultidayRangeLabel(ev) : 'All day')
+      : formatTimeRange(ev.startTime, ev.endTime);
+    return `<div class="event-chip is-google" data-google-id="${esc(ev.id)}" title="Google Calendar (read-only)">
+      <span class="chip-google-lock" aria-hidden="true">G</span>
+      <span class="chip-title">${escHtml(ev.title || 'Untitled')}</span>
+      ${t ? `<span class="chip-time">${escHtml(t)}</span>` : ''}
+    </div>`;
+  }
   const range = ev._multiday ? formatMultidayRangeLabel(ev) : '';
   const t = ev._multiday ? range : formatTimeRange(ev.startTime, ev.endTime);
   const cls = ev._multiday ? ' is-multiday' : (ev._recurring ? ' is-recurring' : '');
@@ -2791,6 +3103,12 @@ function chipHTML(ev, key) {
   </div>`;
 }
 function cellChipHTML(ev) {
+  if (ev && ev._google) {
+    const t = formatTimeRange(ev.startTime, ev.endTime);
+    return `<div class="cell-event-chip is-google" data-google-id="${esc(ev.id)}" title="Google Calendar (read-only)">
+      <span class="chip-google-lock" aria-hidden="true">G</span> ${escHtml(ev.title || 'Untitled')}${t ? `<span class="chip-time">${escHtml(t)}</span>` : ''}
+    </div>`;
+  }
   const range = ev._multiday ? formatMultidayRangeLabel(ev) : '';
   const t = ev._multiday ? range : formatTimeRange(ev.startTime, ev.endTime);
   const cls = ev._multiday ? ' is-multiday' : (ev._recurring ? ' is-recurring' : '');
@@ -2879,6 +3197,7 @@ function renderList() {
       const note = DATA[key]||'';
       const location = getDayLocation(key);
       const events = getEventsForDay(date);
+      const overlayEvents = getOverlayForDay(date).map(ev => ({ ...ev, _google: true }));
 
       const row = document.createElement('div');
       let cls = 'day-row';
@@ -2890,7 +3209,8 @@ function renderList() {
 
       const tagCls = status ? `tag-btn t-${status}` : 'tag-btn';
       const tagLabel = status ? STATUS_LABELS[status] : 'Tag';
-      const chipsHTML   = events.map(ev => chipHTML(ev, key)).join('');
+      const chipsHTML   = events.map(ev => chipHTML(ev, key)).join('')
+        + overlayEvents.map(ev => chipHTML(ev, key)).join('');
       const flights     = getFlights(key);
       const flChipsHTML = flights.map(fl => flightChipHTML(fl, key)).join('');
 
@@ -2909,8 +3229,9 @@ function renderList() {
       bindDayFieldInputs(row);
       row.querySelector('.tag-btn').addEventListener('click', e => cycleStatus(e.target.dataset.key));
       row.querySelector('.add-event-link').addEventListener('click', () => openModal(key, date, true));
-      row.querySelectorAll('.event-chip').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
+      row.querySelectorAll('.event-chip:not([data-google-id])').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
       row.querySelectorAll('.flight-chip').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
+      bindGoogleOverlayClicks(row);
       daysCol.appendChild(row);
     });
 
@@ -2957,6 +3278,9 @@ function renderGrid() {
       const timedEvents = getEventsForDay(date).filter(ev =>
         !ev._multiday && !isUntimedAllDayEvent(ev)
       );
+      const timedOverlay = getOverlayForDay(date)
+        .filter(ev => !isOverlayAllDay(ev))
+        .map(ev => ({ ...ev, _google: true }));
       const flights = getFlights(key);
       const cell = document.createElement('div');
       let cls = 'grid-cell';
@@ -2969,13 +3293,16 @@ function renderGrid() {
         <div class="cell-num">${date.getDate()}</div>
         ${cellDayMetaHtml(key)}
         ${timedEvents.map(ev => cellChipHTML(ev)).join('')}
+        ${timedOverlay.map(ev => cellChipHTML(ev)).join('')}
         ${flights.map(fl => cellFlightChipHTML(fl)).join('')}
         ${status ? `<div class="cell-tag t-${status}">${STATUS_LABELS[status]}</div>` : ''}
       `;
       cell.addEventListener('click', (e) => {
         if (e.target.closest('.task-chip')) return;
+        if (e.target.closest('[data-google-id]')) return;
         openModal(key, date);
       });
+      bindGoogleOverlayClicks(cell);
       weekRow.appendChild(cell);
     });
 
@@ -3014,6 +3341,7 @@ function renderWeekList() {
     const note = DATA[key]||'';
     const location = getDayLocation(key);
     const events = getEventsForDay(date);
+    const overlayEvents = getOverlayForDay(date).map(ev => ({ ...ev, _google: true }));
 
     const block = document.createElement('div');
     block.className = 'week-day-block' + (isPast(date) ? ' past' : '');
@@ -3036,15 +3364,16 @@ function renderWeekList() {
         <div class="week-day-body">
         <input class="week-loc-input" placeholder="Location…" value="${esc(location)}" data-key="${key}" data-day-field="location" />
         <input class="week-note-input" placeholder="Note…" value="${esc(note)}" data-key="${key}" data-day-field="note" />
-        <div class="event-chips">${events.map(ev=>chipHTML(ev,key)).join('')}${getFlights(key).map(fl=>flightChipHTML(fl,key)).join('')}</div>
+        <div class="event-chips">${events.map(ev=>chipHTML(ev,key)).join('')}${overlayEvents.map(ev=>chipHTML(ev,key)).join('')}${getFlights(key).map(fl=>flightChipHTML(fl,key)).join('')}</div>
         <button class="add-event-link" data-key="${key}">+ add event</button>
       </div>
     `;
     block.querySelector('.tag-btn').addEventListener('click', e => cycleStatus(e.target.dataset.key));
     bindDayFieldInputs(block);
     block.querySelector('.add-event-link').addEventListener('click', () => openModal(key, date, true));
-    block.querySelectorAll('.event-chip').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
+    block.querySelectorAll('.event-chip:not([data-google-id])').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
     block.querySelectorAll('.flight-chip').forEach(chip => chip.addEventListener('click', () => openModal(key, date)));
+    bindGoogleOverlayClicks(block);
     el.appendChild(block);
   });
 }
@@ -3162,11 +3491,22 @@ function renderDay() {
 
   const dayEvents = getEventsForDay(date);
   const alldayEvents = dayEvents.filter(ev => ev._multiday || (!ev.startTime && !ev.endTime));
-  if (alldayEvents.length) {
+  const overlayAllDay = getOverlayForDay(date).filter(isOverlayAllDay).map(ev => ({ ...ev, _google: true }));
+  const alldayCombined = [...alldayEvents, ...overlayAllDay];
+  if (alldayCombined.length) {
     const alldaySec = document.createElement('div');
     alldaySec.className = 'dv-allday-section';
     alldaySec.innerHTML = `<div class="dv-allday-title">All day</div><div class="dv-allday-list">${
-      alldayEvents.map(ev => {
+      alldayCombined.map(ev => {
+        if (ev._google) {
+          const range = ev.startDayKey !== ev.endDayKey ? formatMultidayRangeLabel(ev) : '';
+          return `<div class="dv-allday-chip is-google" data-google-id="${esc(ev.id)}">
+            <span class="chip-google-lock" aria-hidden="true">G</span>
+            <strong>${escHtml(ev.title || 'Untitled')}</strong>
+            ${range ? `<span class="chip-time">${escHtml(range)}</span>` : ''}
+            ${ev.location ? `<div style="font-size:12px;color:var(--text-muted);margin-top:2px;">${escHtml(ev.location)}</div>` : ''}
+          </div>`;
+        }
         const range = ev._multiday ? formatMultidayRangeLabel(ev) : '';
         return `<div class="dv-allday-chip${ev._multiday ? ' is-multiday' : ''}" data-open="1">
           <strong>${escHtml(ev.title || 'Untitled')}</strong>
@@ -3178,6 +3518,7 @@ function renderDay() {
     alldaySec.querySelectorAll('[data-open]').forEach(chip => {
       chip.addEventListener('click', () => openModal(key, date));
     });
+    bindGoogleOverlayClicks(alldaySec);
     el.appendChild(alldaySec);
   }
 
@@ -3859,6 +4200,8 @@ function render() {
   else if (currentView === 'week-list') renderWeekList();
   else if (currentView === 'day')       renderDay();
   else if (currentView === 'todo')      renderTodo();
+
+  scheduleGoogleOverlayFetch();
 }
 
 function openDashboardTodayModal() {
